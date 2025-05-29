@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Live Lineup - {{ event.name }} - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3 class="mb-1">
+                    <i class="fas fa-microphone me-2"></i>{{ event.name }}
+                </h3>
+                <p class="mb-0 text-muted">{{ event_date.strftime('%A, %B %d, %Y') }}</p>
+            </div>
+            
+            {% if is_cancelled %}
+                <div class="card-body text-center">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-ban fa-3x mb-3"></i>
+                        <h4>Event Cancelled</h4>
+                        {% if cancellation_reason %}
+                            <p>{{ cancellation_reason }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6 text-center">
+                            <h6 class="text-primary">
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ event.venue }}
+                            </h6>
+                            <p class="text-muted mb-0">{{ event.address }}</p>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <h6 class="text-info">
+                                <i class="fas fa-clock me-1"></i>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                            </h6>
+                            <p class="text-muted mb-0">{{ signups|length }} comedians signed up</p>
+                        </div>
+                    </div>
+                    
+                    {% if signups %}
+                        <div class="lineup-display">
+                            <h5 class="text-center mb-4">
+                                <i class="fas fa-list me-2"></i>Tonight's Lineup
+                            </h5>
+                            
+                            {% for signup in signups %}
+                                <div class="lineup-item border rounded p-3 mb-2 {% if signup.position %}positioned{% else %}waiting{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div class="position-badge me-3">
+                                                {% if signup.position %}
+                                                    <span class="badge bg-primary fs-6">#{{ signup.position }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary fs-6">TBD</span>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1 fw-bold">{{ signup.comedian.full_name }}</h6>
+                                                {% if signup.notes %}
+                                                    <small class="text-muted">{{ signup.notes }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            {% if signup.performed %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Performed
+                                                </span>
+                                            {% elif signup.position == 1 %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-star me-1"></i>Up Next!
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <button id="refresh-lineup" class="btn btn-outline-primary">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh Lineup
+                            </button>
+                            <small class="text-muted d-block mt-2">
+                                Last updated: <span id="last-updated">{{ moment().format('h:mm A') }}</span>
+                            </small>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-user-times fa-3x mb-3"></i>
+                            <h5>No comedians signed up yet</h5>
+                            <p>Check back later or be the first to sign up!</p>
+                            {% if current_user.is_authenticated and current_user.role == 'comedian' %}
+                                <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-2"></i>Sign Up Now
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            <div class="card-footer text-center">
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('event_info', event_id=event.id) }}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-info-circle me-1"></i>Event Info
+                    </a>
+                    {% if current_user.is_authenticated and current_user.role == 'comedian' and not is_cancelled %}
+                        <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-plus me-1"></i>Sign Up
+                        </a>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.role == 'host' and current_user.id == event.host_id %}
+                        <a href="{{ url_for('manage_lineup', event_id=event.id) }}" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-edit me-1"></i>Manage
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshButton = document.getElementById('refresh-lineup');
+    const lastUpdated = document.getElementById('last-updated');
+    
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            // Simple page refresh for now - in a real app you might use AJAX
+            location.reload();
+        });
+    }
+    
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        location.reload();
+    }, 30000);
+    
+    // Update last updated time
+    if (lastUpdated) {
+        const now = new Date();
+        lastUpdated.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+});
+</script>
+{% endblock %}

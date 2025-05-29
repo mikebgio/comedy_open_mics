@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up for {{ event.name }} - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>Sign Up for Open Mic
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Event Details -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-primary">{{ event.name }}</h5>
+                        <p class="mb-1">
+                            <i class="fas fa-map-marker-alt text-danger me-2"></i>{{ event.venue }}
+                        </p>
+                        <p class="mb-1">
+                            <i class="fas fa-location-arrow text-warning me-2"></i>{{ event.address }}
+                        </p>
+                        <p class="mb-1">
+                            <i class="fas fa-calendar text-primary me-2"></i>{{ next_date.strftime('%A, %B %d, %Y') }}
+                        </p>
+                        <p class="mb-1">
+                            <i class="fas fa-clock text-info me-2"></i>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-user text-success me-2"></i>Host: {{ event.host.full_name }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if event.description %}
+                            <h6>About This Open Mic</h6>
+                            <p class="text-muted">{{ event.description }}</p>
+                        {% endif %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Signup deadline:</strong> {{ event.signup_deadline_hours }} hours before the event
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Signup Form -->
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="3", placeholder="Optional notes for the host (e.g., special requirements, preferred time slot, etc.)") }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger">
+                                {% for error in form.notes.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check me-2"></i>Confirm Signup
+                        </button>
+                        <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

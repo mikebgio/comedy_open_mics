@@ -1,0 +1,184 @@
+/* Custom styles for Comedy Open Mic Manager */
+
+/* Hero section styling */
+.hero-section {
+    background: linear-gradient(135deg, var(--bs-dark) 0%, var(--bs-secondary) 100%);
+    border: 1px solid var(--bs-border-color);
+}
+
+/* Event cards */
+.event-card {
+    transition: all 0.3s ease;
+    background: var(--bs-body-bg);
+}
+
+.event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Lineup styling */
+.lineup-item {
+    transition: all 0.3s ease;
+    background: var(--bs-body-bg);
+}
+
+.lineup-item:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.lineup-item.positioned {
+    border-left: 4px solid var(--bs-primary);
+}
+
+.lineup-item.waiting {
+    border-left: 4px solid var(--bs-secondary);
+}
+
+/* Drag handle */
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Position badges */
+.position-badge .badge {
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Navbar enhancements */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Button enhancements */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Card enhancements */
+.card {
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+/* Form enhancements */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Progress bar styling */
+.progress {
+    height: 0.75rem;
+    border-radius: 0.375rem;
+}
+
+/* Footer styling */
+footer {
+    margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1.5rem !important;
+    }
+    
+    .hero-section .display-4 {
+        font-size: 2rem;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+
+/* Animation for lineup updates */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.lineup-item {
+    animation: slideIn 0.3s ease;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-active {
+    background-color: var(--bs-success);
+}
+
+.status-inactive {
+    background-color: var(--bs-secondary);
+}
+
+.status-cancelled {
+    background-color: var(--bs-danger);
+}
+
+/* Custom scrollbar for lineup */
+.lineup-display {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.lineup-display::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lineup-display::-webkit-scrollbar-track {
+    background: var(--bs-secondary-bg);
+    border-radius: 3px;
+}
+
+.lineup-display::-webkit-scrollbar-thumb {
+    background: var(--bs-secondary);
+    border-radius: 3px;
+}
+
+.lineup-display::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-primary);
+}

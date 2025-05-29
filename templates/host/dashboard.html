@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Host Dashboard - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-users me-2"></i>Host Dashboard
+    </h2>
+    <a href="{{ url_for('create_event') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create New Event
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if events %}
+            <div class="row">
+                {% for event in events %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">{{ event.name }}</h5>
+                                <span class="badge {% if event.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if event.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <p class="mb-1">
+                                            <i class="fas fa-calendar text-primary me-2"></i>{{ event.day_of_week }}s
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="fas fa-clock text-info me-2"></i>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="fas fa-map-marker-alt text-danger me-2"></i>{{ event.venue }}
+                                        </p>
+                                        <p class="mb-0">
+                                            <i class="fas fa-users text-warning me-2"></i>Max: {{ event.max_signups }} comedians
+                                        </p>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        {% if event.description %}
+                                            <p class="text-muted small">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <a href="{{ url_for('manage_lineup', event_id=event.id) }}" 
+                                       class="btn btn-sm btn-primary">
+                                        <i class="fas fa-list me-1"></i>Manage Lineup
+                                    </a>
+                                    <a href="{{ url_for('event_info', event_id=event.id) }}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-info me-1"></i>View Info
+                                    </a>
+                                    <a href="{{ url_for('live_lineup', event_id=event.id) }}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-eye me-1"></i>Live Lineup
+                                    </a>
+                                    <a href="{{ url_for('cancel_event', event_id=event.id) }}" 
+                                       class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-ban me-1"></i>Cancel Date
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-microphone-slash fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Events Yet</h4>
+                <p class="text-muted">Create your first open mic event to get started!</p>
+                <a href="{{ url_for('create_event') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Create Your First Event
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

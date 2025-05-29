@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Comedian Dashboard - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-user-tie me-2"></i>Comedian Dashboard
+    </h2>
+</div>
+
+<div class="row">
+    <!-- Upcoming Signups -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>Your Upcoming Performances
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_signups %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Venue</th>
+                                    <th>Position</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for signup in upcoming_signups %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ signup.event.name }}</strong>
+                                        {% if signup.notes %}
+                                            <br><small class="text-muted">{{ signup.notes }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ signup.event_date.strftime('%a, %b %d') }}</td>
+                                    <td>{{ signup.event.start_time.strftime('%I:%M %p') }}</td>
+                                    <td>{{ signup.event.venue }}</td>
+                                    <td>
+                                        {% if signup.position %}
+                                            <span class="badge bg-success">#{{ signup.position }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">TBD</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('live_lineup', event_id=signup.event.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-list me-1"></i>View Lineup
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                        <p>No upcoming performances. Sign up for an open mic below!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Available Events -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>Available Open Mics
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if events %}
+                    {% for event in events %}
+                        <div class="event-card mb-3 p-3 border rounded">
+                            <h6 class="fw-bold">{{ event.name }}</h6>
+                            <p class="mb-1">
+                                <i class="fas fa-calendar text-primary me-1"></i>{{ event.day_of_week }}s
+                            </p>
+                            <p class="mb-1">
+                                <i class="fas fa-clock text-info me-1"></i>{{ event.start_time.strftime('%I:%M %p') }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i>{{ event.venue }}
+                            </p>
+                            <div class="d-flex gap-1">
+                                <a href="{{ url_for('signup_for_event', event_id=event.id) }}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Sign Up
+                                </a>
+                                <a href="{{ url_for('event_info', event_id=event.id) }}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-info me-1"></i>Info
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No events available at the moment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
