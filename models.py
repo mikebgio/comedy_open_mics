@@ -17,8 +17,8 @@ class User(UserMixin, db.Model):
     
     # Relationships
     owned_shows = db.relationship('Show', backref='owner', lazy=True, foreign_keys='Show.owner_id')
-    show_runner_roles = db.relationship('ShowRunner', backref='user', lazy=True)
-    show_host_roles = db.relationship('ShowHost', backref='user', lazy=True)
+    show_runner_roles = db.relationship('ShowRunner', backref='user', lazy=True, foreign_keys='ShowRunner.user_id')
+    show_host_roles = db.relationship('ShowHost', backref='user', lazy=True, foreign_keys='ShowHost.user_id')
     signups = db.relationship('Signup', backref='comedian', lazy=True)
     instance_host_roles = db.relationship('ShowInstanceHost', backref='user', lazy=True)
     
