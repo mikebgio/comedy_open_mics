@@ -52,4 +52,4 @@ def inject_current_year():
     return {'current_year': datetime.now().year}
 
 # Import routes to register them with the app
-import routes  # noqa: F401
+import routes_simple  # noqa: F401
