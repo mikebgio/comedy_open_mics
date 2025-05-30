@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: black
+        name: Black Code Formatter
+        entry: python
+        args: [-m, black, --line-length=88, .]
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: isort
+        name: Import Sorter
+        entry: python
+        args: [-m, isort, --profile=black, .]
+        language: system
+        types: [python]
+        pass_filenames: false

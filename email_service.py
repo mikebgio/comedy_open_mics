@@ -1,28 +1,34 @@
 import os
+
 import boto3
 from botocore.exceptions import ClientError
-from flask import url_for, current_app
+from flask import current_app, url_for
+
 
 def send_verification_email(user):
     """Send email verification to user using AWS SES"""
     # Check for AWS credentials
-    if not (os.environ.get('AWS_ACCESS_KEY_ID') and os.environ.get('AWS_SECRET_ACCESS_KEY')):
-        current_app.logger.warning("AWS credentials not set - email verification disabled")
+    if not (
+        os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
+    ):
+        current_app.logger.warning(
+            "AWS credentials not set - email verification disabled"
+        )
         return False
-    
+
     try:
         # Create SES client
         ses_client = boto3.client(
-            'ses',
-            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
+            "ses",
+            region_name=os.environ.get("AWS_REGION", "us-east-1"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         )
-        
-        verification_url = url_for('verify_email', 
-                                 token=user.email_verification_token, 
-                                 _external=True)
-        
+
+        verification_url = url_for(
+            "verify_email", token=user.email_verification_token, _external=True
+        )
+
         html_content = f"""
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <h2 style="color: #333;">Welcome to Comedy Open Mic Manager!</h2>
@@ -45,7 +51,7 @@ def send_verification_email(user):
             </p>
         </div>
         """
-        
+
         text_content = f"""
         Welcome to Comedy Open Mic Manager!
         
@@ -60,23 +66,23 @@ def send_verification_email(user):
         
         Comedy Open Mic Manager - Connecting comedians and hosts
         """
-        
+
         # Send email using SES
         response = ses_client.send_email(
-            Source=os.environ.get('SES_FROM_EMAIL', 'noreply@comedyopenmic.com'),
-            Destination={'ToAddresses': [user.email]},
+            Source=os.environ.get("SES_FROM_EMAIL", "noreply@comedyopenmic.com"),
+            Destination={"ToAddresses": [user.email]},
             Message={
-                'Subject': {'Data': 'Verify your email - Comedy Open Mic Manager'},
-                'Body': {
-                    'Text': {'Data': text_content},
-                    'Html': {'Data': html_content}
-                }
-            }
+                "Subject": {"Data": "Verify your email - Comedy Open Mic Manager"},
+                "Body": {
+                    "Text": {"Data": text_content},
+                    "Html": {"Data": html_content},
+                },
+            },
         )
-        
+
         current_app.logger.info(f"Verification email sent to {user.email} via AWS SES")
         return True
-        
+
     except ClientError as e:
         current_app.logger.error(f"AWS SES error: {e.response['Error']['Message']}")
         return False
@@ -84,20 +90,23 @@ def send_verification_email(user):
         current_app.logger.error(f"Failed to send verification email: {str(e)}")
         return False
 
+
 def send_welcome_email(user):
     """Send welcome email after verification using AWS SES"""
-    if not (os.environ.get('AWS_ACCESS_KEY_ID') and os.environ.get('AWS_SECRET_ACCESS_KEY')):
+    if not (
+        os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
+    ):
         return False
-        
+
     try:
         # Create SES client
         ses_client = boto3.client(
-            'ses',
-            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
+            "ses",
+            region_name=os.environ.get("AWS_REGION", "us-east-1"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         )
-        
+
         html_content = f"""
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <h2 style="color: #333;">Welcome to Comedy Open Mic Manager!</h2>
@@ -122,7 +131,7 @@ def send_welcome_email(user):
             </p>
         </div>
         """
-        
+
         text_content = f"""
         Welcome to Comedy Open Mic Manager!
         
@@ -139,23 +148,23 @@ def send_welcome_email(user):
         
         Comedy Open Mic Manager - Connecting comedians and hosts
         """
-        
+
         # Send email using SES
         response = ses_client.send_email(
-            Source=os.environ.get('SES_FROM_EMAIL', 'noreply@comedyopenmic.com'),
-            Destination={'ToAddresses': [user.email]},
+            Source=os.environ.get("SES_FROM_EMAIL", "noreply@comedyopenmic.com"),
+            Destination={"ToAddresses": [user.email]},
             Message={
-                'Subject': {'Data': 'Welcome to Comedy Open Mic Manager!'},
-                'Body': {
-                    'Text': {'Data': text_content},
-                    'Html': {'Data': html_content}
-                }
-            }
+                "Subject": {"Data": "Welcome to Comedy Open Mic Manager!"},
+                "Body": {
+                    "Text": {"Data": text_content},
+                    "Html": {"Data": html_content},
+                },
+            },
         )
-        
+
         current_app.logger.info(f"Welcome email sent to {user.email} via AWS SES")
         return True
-        
+
     except ClientError as e:
         current_app.logger.error(f"AWS SES error: {e.response['Error']['Message']}")
         return False

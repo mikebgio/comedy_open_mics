@@ -1,17 +1,20 @@
-import os
 import logging
+import os
 from datetime import datetime
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
+
 class Base(DeclarativeBase):
     pass
+
 
 db = SQLAlchemy(model_class=Base)
 
@@ -33,23 +36,29 @@ db.init_app(app)
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_view = "login"
+login_manager.login_message = "Please log in to access this page."
+
 
 @login_manager.user_loader
 def load_user(user_id):
     from models import User
+
     return User.query.get(int(user_id))
+
 
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
+
     db.create_all()
+
 
 # Make current year available to all templates
 @app.context_processor
 def inject_current_year():
-    return {'current_year': datetime.now().year}
+    return {"current_year": datetime.now().year}
+
 
 # Import routes to register them with the app
 import routes_simple  # noqa: F401
