@@ -1,6 +1,28 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "comedy-open-mic-manager"
+version = "1.0.0"
+description = "A comprehensive Comedy Open Mic management platform"
+authors = [{name = "Comedy Open Mic Manager Team"}]
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=2.3.0",
+    "flask-sqlalchemy>=3.0.0",
+    "flask-login>=0.6.0",
+    "flask-wtf>=1.1.0",
+    "wtforms>=3.0.0",
+    "werkzeug>=2.3.0",
+    "gunicorn>=21.0.0",
+    "psycopg2-binary>=2.9.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*.py"]
+exclude = ["tests*", "static*", "templates*", "attached_assets*", ".git*", "__pycache__*"]
 
 [tool.black]
 line-length = 88
