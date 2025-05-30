@@ -60,7 +60,7 @@ class Event(db.Model):
     address = db.Column(db.String(200), nullable=False)
     day_of_week = db.Column(db.String(20), nullable=False)  # Monday, Tuesday, etc.
     start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=True)
     description = db.Column(db.Text)
     max_signups = db.Column(db.Integer, default=20)
     signup_deadline_hours = db.Column(db.Integer, default=2)  # Hours before event
