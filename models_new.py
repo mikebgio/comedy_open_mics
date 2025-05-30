@@ -128,7 +128,7 @@ class Show(db.Model):
         # Find the next occurrence based on day of week and cadence
         days_ahead = 0
         while True:
-            check_date = from_date + datetime.timedelta(days=days_ahead)
+            check_date = from_date + timedelta(days=days_ahead)
             if check_date.strftime('%A') == self.day_of_week:
                 if self.repeat_cadence == 'weekly':
                     return check_date
