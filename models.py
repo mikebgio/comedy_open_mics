@@ -4,6 +4,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -16,11 +17,17 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    owned_shows = db.relationship('Show', backref='owner', lazy=True, foreign_keys='Show.owner_id')
-    show_runner_roles = db.relationship('ShowRunner', backref='user', lazy=True, foreign_keys='ShowRunner.user_id')
-    show_host_roles = db.relationship('ShowHost', backref='user', lazy=True, foreign_keys='ShowHost.user_id')
-    signups = db.relationship('Signup', backref='comedian', lazy=True)
-    instance_host_roles = db.relationship('ShowInstanceHost', backref='user', lazy=True)
+    owned_shows = db.relationship(
+        "Show", backref="owner", lazy=True, foreign_keys="Show.owner_id"
+    )
+    show_runner_roles = db.relationship(
+        "ShowRunner", backref="user", lazy=True, foreign_keys="ShowRunner.user_id"
+    )
+    show_host_roles = db.relationship(
+        "ShowHost", backref="user", lazy=True, foreign_keys="ShowHost.user_id"
+    )
+    signups = db.relationship("Signup", backref="comedian", lazy=True)
+    instance_host_roles = db.relationship("ShowInstanceHost", backref="user", lazy=True)
     
     def set_password(self, password):
         """Set password hash"""
