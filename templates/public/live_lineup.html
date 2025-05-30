@@ -10,7 +10,7 @@
                 <h3 class="mb-1">
                     <i class="fas fa-microphone me-2"></i>{{ event.name }}
                 </h3>
-                <p class="mb-0 text-muted">{{ event_date.strftime('%A, %B %d, %Y') }}</p>
+                <p class="mb-0 text-muted">{{ event.instance_date.strftime('%A, %B %d, %Y') }}</p>
             </div>
             
             {% if is_cancelled %}

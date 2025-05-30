@@ -55,7 +55,7 @@
                                             <br><small class="text-muted">{{ signup.notes }}</small>
                                         {% endif %}
                                     </td>
-                                    <td>{{ signup.event_date.strftime('%a, %b %d') }}</td>
+                                    <td>{{ signup.show_instance.instance_date.strftime('%a, %b %d') }}</td>
                                     <td>{{ signup.event.start_time.strftime('%I:%M %p') }}</td>
                                     <td>{{ signup.event.venue }}</td>
                                     <td>

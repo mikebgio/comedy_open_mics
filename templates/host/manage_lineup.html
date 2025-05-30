@@ -8,7 +8,7 @@
         <h2>
             <i class="fas fa-list me-2"></i>Manage Lineup
         </h2>
-        <p class="text-muted mb-0">{{ event.name }} - {{ event_date.strftime('%A, %B %d, %Y') }}</p>
+        <p class="text-muted mb-0">{{ event.show.name }} - {{ event.instance_date.strftime('%A, %B %d, %Y') }}</p>
     </div>
     <div>
         <a href="{{ url_for('random_select', event_id=event.id) }}" class="btn btn-warning me-2">
