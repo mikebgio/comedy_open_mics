@@ -438,32 +438,35 @@ def calendar_view():
     events = Event.query.filter_by(is_active=True).all()
     
     # Create a dictionary of events by date
+    today = date.today()
     events_by_date = {}
     for day in range(1, (end_date - start_date).days + 2):
         current_date = start_date + timedelta(days=day-1)
         events_by_date[current_date] = []
         
-        for event in events:
-            if current_date.strftime('%A') == event.day_of_week:
-                # Check if not cancelled
-                cancellation = EventCancellation.query.filter_by(
-                    event_id=event.id,
-                    cancelled_date=current_date
-                ).first()
-                
-                if not cancellation:
-                    # Get signup count for this date
-                    signup_count = Signup.query.filter_by(
+        # Only show current and future events
+        if current_date >= today:
+            for event in events:
+                if current_date.strftime('%A') == event.day_of_week:
+                    # Check if not cancelled
+                    cancellation = EventCancellation.query.filter_by(
                         event_id=event.id,
-                        event_date=current_date
-                    ).count()
+                        cancelled_date=current_date
+                    ).first()
                     
-                    event_data = {
-                        'event': event,
-                        'signup_count': signup_count,
-                        'date': current_date
-                    }
-                    events_by_date[current_date].append(event_data)
+                    if not cancellation:
+                        # Get signup count for this date
+                        signup_count = Signup.query.filter_by(
+                            event_id=event.id,
+                            event_date=current_date
+                        ).count()
+                        
+                        event_data = {
+                            'event': event,
+                            'signup_count': signup_count,
+                            'date': current_date
+                        }
+                        events_by_date[current_date].append(event_data)
     
     # Navigation dates
     if month == 1:
@@ -533,34 +536,37 @@ def calendar_events_api():
     
     events = Event.query.filter_by(is_active=True).all()
     
+    today = date.today()
     calendar_events = []
     for day in range(1, (end_date - start_date).days + 2):
         current_date = start_date + timedelta(days=day-1)
         
-        for event in events:
-            if current_date.strftime('%A') == event.day_of_week:
-                # Check if not cancelled
-                cancellation = EventCancellation.query.filter_by(
-                    event_id=event.id,
-                    cancelled_date=current_date
-                ).first()
-                
-                if not cancellation:
-                    signup_count = Signup.query.filter_by(
+        # Only show current and future events
+        if current_date >= today:
+            for event in events:
+                if current_date.strftime('%A') == event.day_of_week:
+                    # Check if not cancelled
+                    cancellation = EventCancellation.query.filter_by(
                         event_id=event.id,
-                        event_date=current_date
-                    ).count()
+                        cancelled_date=current_date
+                    ).first()
                     
-                    calendar_events.append({
-                        'id': event.id,
-                        'title': event.name,
-                        'venue': event.venue,
-                        'start_time': event.start_time.strftime('%H:%M'),
-                        'date': current_date.isoformat(),
-                        'signup_count': signup_count,
-                        'max_signups': event.max_signups,
-                        'is_owner': event.host_id == current_user.id
-                    })
+                    if not cancellation:
+                        signup_count = Signup.query.filter_by(
+                            event_id=event.id,
+                            event_date=current_date
+                        ).count()
+                        
+                        calendar_events.append({
+                            'id': event.id,
+                            'title': event.name,
+                            'venue': event.venue,
+                            'start_time': event.start_time.strftime('%H:%M'),
+                            'date': current_date.isoformat(),
+                            'signup_count': signup_count,
+                            'max_signups': event.max_signups,
+                            'is_owner': event.host_id == current_user.id
+                        })
     
     return jsonify(calendar_events)
 

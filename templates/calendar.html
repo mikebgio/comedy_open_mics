@@ -52,7 +52,8 @@
                             {% endif %}
                             
                             <div class="calendar-day {% if day == 0 %}empty-day{% endif %} 
-                                        {% if current_date == today %}today{% endif %}"
+                                        {% if current_date == today %}today{% endif %}
+                                        {% if current_date and current_date < today %}past-day{% endif %}"
                                  {% if current_date %}data-date="{{ current_date.isoformat() }}"{% endif %}>
                                 
                                 {% if day != 0 %}
@@ -171,6 +172,15 @@
 .empty-day {
     background-color: #f8f9fa;
     opacity: 0.5;
+}
+
+.past-day {
+    background-color: #f1f3f4;
+    opacity: 0.6;
+}
+
+.past-day .day-number {
+    color: #9e9e9e;
 }
 
 .day-number {

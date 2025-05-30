@@ -31,7 +31,7 @@
                         </p>
                         <p class="mb-1">
                             <i class="fas fa-clock text-info me-2"></i>
-                            {{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                            {{ event.start_time.strftime('%I:%M %p') }}{% if event.end_time %} - {{ event.end_time.strftime('%I:%M %p') }}{% endif %}
                         </p>
                         <p class="mb-0">
                             <i class="fas fa-users text-success me-2"></i>

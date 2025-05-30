@@ -6,7 +6,6 @@ import random
 from datetime import time, datetime, timedelta
 from app import app, db
 from models import User, Event, Signup
-from werkzeug.security import generate_password_hash
 
 # Realistic comedian names and Boston venues
 COMEDIAN_NAMES = [
