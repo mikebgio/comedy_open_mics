@@ -47,7 +47,9 @@ class ComedyOpenMicTestCase(unittest.TestCase):
             user.set_password("testpassword")
             db.session.add(user)
             db.session.commit()
-            return user
+            user_id = user.id
+            db.session.expunge(user)
+            return user_id
     
     def create_test_event(self, host_user, name="Test Comedy Show"):
         """Helper method to create a test event."""
@@ -151,18 +153,20 @@ class ComedyOpenMicTestCase(unittest.TestCase):
     def test_comedian_signup_for_event(self):
         """Test comedian signing up for an event."""
         # Create host and event
-        host = self.create_test_user(username="host", email="host@example.com", is_host=True)
+        host_id = self.create_test_user(username="host", email="host@example.com", is_host=True)
+        
         with app.app_context():
-            # Refresh the host object to ensure it's attached to the current session
-            host = User.query.get(host.id)
+            # Get fresh host object from database
+            host = User.query.get(host_id)
             event = self.create_test_event(host)
+            event_id = event.id
         
         # Create comedian and login
-        comedian = self.create_test_user(username="comedian", email="comedian@example.com")
+        comedian_id = self.create_test_user(username="comedian", email="comedian@example.com")
         self.login_user(username="comedian")
         
         # Sign up for event
-        rv = self.app.post(f'/comedian/signup/{event.id}', data=dict(
+        rv = self.app.post(f'/comedian/signup/{event_id}', data=dict(
             notes='Excited to perform!'
         ), follow_redirects=True)
         
@@ -172,8 +176,8 @@ class ComedyOpenMicTestCase(unittest.TestCase):
         # Verify signup was created
         with app.app_context():
             signup = Signup.query.filter_by(
-                comedian_id=comedian.id,
-                event_id=event.id
+                comedian_id=comedian_id,
+                event_id=event_id
             ).first()
             self.assertIsNotNone(signup)
             self.assertEqual(signup.notes, 'Excited to perform!')
