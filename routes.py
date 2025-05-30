@@ -5,7 +5,7 @@ from urllib.parse import urlparse, urljoin
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
-from models import User, Event, Signup, EventCancellation
+from models import User, Show, ShowInstance, Signup, ShowRunner, ShowHost, ShowInstanceHost
 from forms import RegistrationForm, LoginForm, EventForm, SignupForm, CancellationForm
 
 
