@@ -1,15 +1,24 @@
 import os
+import boto3
+from botocore.exceptions import ClientError
 from flask import url_for, current_app
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 
 def send_verification_email(user):
-    """Send email verification to user"""
-    if not os.environ.get('SENDGRID_API_KEY'):
-        current_app.logger.warning("SENDGRID_API_KEY not set - email verification disabled")
+    """Send email verification to user using AWS SES"""
+    # Check for AWS credentials
+    if not (os.environ.get('AWS_ACCESS_KEY_ID') and os.environ.get('AWS_SECRET_ACCESS_KEY')):
+        current_app.logger.warning("AWS credentials not set - email verification disabled")
         return False
     
     try:
+        # Create SES client
+        ses_client = boto3.client(
+            'ses',
+            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
+        )
+        
         verification_url = url_for('verify_email', 
                                  token=user.email_verification_token, 
                                  _external=True)
@@ -37,29 +46,58 @@ def send_verification_email(user):
         </div>
         """
         
-        message = Mail(
-            from_email='noreply@comedyopenmic.com',  # This should be a verified sender
-            to_emails=user.email,
-            subject='Verify your email - Comedy Open Mic Manager',
-            html_content=html_content
+        text_content = f"""
+        Welcome to Comedy Open Mic Manager!
+        
+        Hi {user.first_name},
+        
+        Thanks for signing up! Please verify your email address by visiting this link:
+        {verification_url}
+        
+        This link will expire in 24 hours for security reasons.
+        
+        If you didn't sign up for this account, you can safely ignore this email.
+        
+        Comedy Open Mic Manager - Connecting comedians and hosts
+        """
+        
+        # Send email using SES
+        response = ses_client.send_email(
+            Source=os.environ.get('SES_FROM_EMAIL', 'noreply@comedyopenmic.com'),
+            Destination={'ToAddresses': [user.email]},
+            Message={
+                'Subject': {'Data': 'Verify your email - Comedy Open Mic Manager'},
+                'Body': {
+                    'Text': {'Data': text_content},
+                    'Html': {'Data': html_content}
+                }
+            }
         )
         
-        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-        response = sg.send(message)
-        
-        current_app.logger.info(f"Verification email sent to {user.email}")
+        current_app.logger.info(f"Verification email sent to {user.email} via AWS SES")
         return True
         
+    except ClientError as e:
+        current_app.logger.error(f"AWS SES error: {e.response['Error']['Message']}")
+        return False
     except Exception as e:
         current_app.logger.error(f"Failed to send verification email: {str(e)}")
         return False
 
 def send_welcome_email(user):
-    """Send welcome email after verification"""
-    if not os.environ.get('SENDGRID_API_KEY'):
+    """Send welcome email after verification using AWS SES"""
+    if not (os.environ.get('AWS_ACCESS_KEY_ID') and os.environ.get('AWS_SECRET_ACCESS_KEY')):
         return False
         
     try:
+        # Create SES client
+        ses_client = boto3.client(
+            'ses',
+            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
+        )
+        
         html_content = f"""
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <h2 style="color: #333;">Welcome to Comedy Open Mic Manager!</h2>
@@ -85,18 +123,42 @@ def send_welcome_email(user):
         </div>
         """
         
-        message = Mail(
-            from_email='noreply@comedyopenmic.com',
-            to_emails=user.email,
-            subject='Welcome to Comedy Open Mic Manager!',
-            html_content=html_content
+        text_content = f"""
+        Welcome to Comedy Open Mic Manager!
+        
+        Hi {user.first_name},
+        
+        Your email has been verified successfully! You're now ready to:
+        - Sign up for comedy open mic events
+        - View live lineups and track your spot
+        - Create and manage your own open mic events
+        
+        Visit your dashboard: {url_for('dashboard', _external=True)}
+        
+        Happy performing!
+        
+        Comedy Open Mic Manager - Connecting comedians and hosts
+        """
+        
+        # Send email using SES
+        response = ses_client.send_email(
+            Source=os.environ.get('SES_FROM_EMAIL', 'noreply@comedyopenmic.com'),
+            Destination={'ToAddresses': [user.email]},
+            Message={
+                'Subject': {'Data': 'Welcome to Comedy Open Mic Manager!'},
+                'Body': {
+                    'Text': {'Data': text_content},
+                    'Html': {'Data': html_content}
+                }
+            }
         )
         
-        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-        response = sg.send(message)
-        
+        current_app.logger.info(f"Welcome email sent to {user.email} via AWS SES")
         return True
         
+    except ClientError as e:
+        current_app.logger.error(f"AWS SES error: {e.response['Error']['Message']}")
+        return False
     except Exception as e:
         current_app.logger.error(f"Failed to send welcome email: {str(e)}")
         return False

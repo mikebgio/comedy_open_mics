@@ -99,6 +99,20 @@ def verify_email(token):
     login_user(user)
     return redirect(url_for('dashboard'))
 
+@app.route('/resend_verification')
+@login_required
+def resend_verification():
+    if current_user.email_verified:
+        flash('Your email is already verified.')
+        return redirect(url_for('dashboard'))
+    
+    if send_verification_email(current_user):
+        flash('Verification email sent! Please check your inbox.')
+    else:
+        flash('Unable to send verification email. Please contact support.')
+    
+    return redirect(url_for('comedian_dashboard'))
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -218,7 +232,12 @@ def host_dashboard():
 @app.route('/host/create_event', methods=['GET', 'POST'])
 @login_required
 def create_event():
-    # Allow any user to create events, making them a host
+    # Require email verification before creating events
+    if not current_user.email_verified:
+        flash('You must verify your email address before creating events. Please check your email for a verification link.')
+        return redirect(url_for('comedian_dashboard'))
+    
+    # Allow any verified user to create events, making them a host
     if not current_user.is_host:
         current_user.become_host()
         db.session.commit()
