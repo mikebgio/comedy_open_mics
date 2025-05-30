@@ -5,7 +5,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
 from models import User, Event, Signup, EventCancellation
 from forms import RegistrationForm, LoginForm, EventForm, SignupForm, CancellationForm
-from email_service import send_verification_email, send_welcome_email
+
 
 @app.route('/')
 def index():
@@ -44,17 +44,12 @@ def register():
             is_host=False
         )
         user.set_password(form.password.data)
-        user.generate_verification_token()
+        user.email_verified = True  # Skip email verification
         
         db.session.add(user)
         db.session.commit()
         
-        # Send verification email
-        if send_verification_email(user):
-            flash('Registration successful! Please check your email to verify your account.')
-        else:
-            flash('Registration successful! You can now log in.')
-            
+        flash('Registration successful! You can now log in.')
         return redirect(url_for('login'))
     
     return render_template('auth/register.html', form=form)
@@ -84,34 +79,9 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('index'))
 
-@app.route('/verify_email/<token>')
-def verify_email(token):
-    user = User.query.filter_by(email_verification_token=token).first()
-    if not user:
-        flash('Invalid or expired verification link.')
-        return redirect(url_for('login'))
-    
-    user.verify_email()
-    db.session.commit()
-    
-    send_welcome_email(user)
-    flash('Email verified successfully! Welcome to Comedy Open Mic Manager.')
-    login_user(user)
-    return redirect(url_for('dashboard'))
 
-@app.route('/resend_verification')
-@login_required
-def resend_verification():
-    if current_user.email_verified:
-        flash('Your email is already verified.')
-        return redirect(url_for('dashboard'))
-    
-    if send_verification_email(current_user):
-        flash('Verification email sent! Please check your inbox.')
-    else:
-        flash('Unable to send verification email. Please contact support.')
-    
-    return redirect(url_for('comedian_dashboard'))
+
+
 
 @app.route('/dashboard')
 @login_required
@@ -232,12 +202,7 @@ def host_dashboard():
 @app.route('/host/create_event', methods=['GET', 'POST'])
 @login_required
 def create_event():
-    # Require email verification before creating events
-    if not current_user.email_verified:
-        flash('You must verify your email address before creating events. Please check your email for a verification link.')
-        return redirect(url_for('comedian_dashboard'))
-    
-    # Allow any verified user to create events, making them a host
+    # Allow any user to create events, making them a host
     if not current_user.is_host:
         current_user.become_host()
         db.session.commit()

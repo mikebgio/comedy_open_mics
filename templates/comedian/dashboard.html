@@ -21,15 +21,7 @@
     </div>
 </div>
 
-{% if not current_user.email_verified %}
-<div class="alert alert-warning">
-    <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>Email Verification Required:</strong> Please verify your email address to create events and access all features.
-    <a href="{{ url_for('resend_verification') }}" class="btn btn-sm btn-outline-warning ms-2">
-        <i class="fas fa-envelope me-1"></i>Resend Verification Email
-    </a>
-</div>
-{% endif %}
+
 
 <div class="row">
     <!-- Upcoming Signups -->
