@@ -85,7 +85,7 @@
                                 <i class="fas fa-sync-alt me-2"></i>Refresh Lineup
                             </button>
                             <small class="text-muted d-block mt-2">
-                                Last updated: <span id="last-updated">{{ moment().format('h:mm A') }}</span>
+                                Last updated: <span id="last-updated">{{ current_time.strftime('%I:%M %p') }}</span>
                             </small>
                         </div>
                     {% else %}

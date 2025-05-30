@@ -374,6 +374,7 @@ def live_lineup(event_id):
     
     # Get today's lineup
     today = date.today()
+    current_time = datetime.now()
     days_ahead = (list(range(7))[['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].index(event.day_of_week)] - today.weekday()) % 7
     if days_ahead == 0:
         event_date = today
@@ -391,6 +392,7 @@ def live_lineup(event_id):
                              event=event, 
                              signups=[], 
                              event_date=event_date,
+                             current_time=current_time,
                              is_cancelled=True,
                              cancellation_reason=cancellation.reason)
     
@@ -403,6 +405,7 @@ def live_lineup(event_id):
                          event=event, 
                          signups=signups, 
                          event_date=event_date,
+                         current_time=current_time,
                          is_cancelled=False)
 
 # Import routes to register them
