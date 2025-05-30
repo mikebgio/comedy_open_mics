@@ -176,10 +176,19 @@ function showNotification(message, type = 'info') {
     alertDiv.style.zIndex = '9999';
     alertDiv.style.minWidth = '300px';
     
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+    // Create message element safely using textContent to prevent XSS
+    const messageElement = document.createElement('span');
+    messageElement.textContent = message;
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'btn-close';
+    closeButton.setAttribute('data-bs-dismiss', 'alert');
+    
+    // Append elements safely
+    alertDiv.appendChild(messageElement);
+    alertDiv.appendChild(closeButton);
     
     document.body.appendChild(alertDiv);
     
