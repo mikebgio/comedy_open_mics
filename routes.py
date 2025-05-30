@@ -1,4 +1,5 @@
 import random
+import calendar
 from datetime import datetime, date, timedelta
 from urllib.parse import urlparse, urljoin
 from flask import render_template, flash, redirect, url_for, request, jsonify
@@ -415,6 +416,153 @@ def live_lineup(event_id):
                          event_date=event_date,
                          current_time=current_time,
                          is_cancelled=False)
+
+@app.route('/calendar')
+@login_required
+def calendar_view():
+    # Get the current month or requested month
+    year = request.args.get('year', default=datetime.now().year, type=int)
+    month = request.args.get('month', default=datetime.now().month, type=int)
+    
+    # Create calendar data
+    cal = calendar.Calendar(firstweekday=6)  # Sunday first
+    month_days = cal.monthdayscalendar(year, month)
+    
+    # Get all events for the month
+    start_date = date(year, month, 1)
+    if month == 12:
+        end_date = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end_date = date(year, month + 1, 1) - timedelta(days=1)
+    
+    events = Event.query.filter_by(is_active=True).all()
+    
+    # Create a dictionary of events by date
+    events_by_date = {}
+    for day in range(1, (end_date - start_date).days + 2):
+        current_date = start_date + timedelta(days=day-1)
+        events_by_date[current_date] = []
+        
+        for event in events:
+            if current_date.strftime('%A') == event.day_of_week:
+                # Check if not cancelled
+                cancellation = EventCancellation.query.filter_by(
+                    event_id=event.id,
+                    cancelled_date=current_date
+                ).first()
+                
+                if not cancellation:
+                    # Get signup count for this date
+                    signup_count = Signup.query.filter_by(
+                        event_id=event.id,
+                        event_date=current_date
+                    ).count()
+                    
+                    event_data = {
+                        'event': event,
+                        'signup_count': signup_count,
+                        'date': current_date
+                    }
+                    events_by_date[current_date].append(event_data)
+    
+    # Navigation dates
+    if month == 1:
+        prev_month = {'year': year - 1, 'month': 12}
+    else:
+        prev_month = {'year': year, 'month': month - 1}
+    
+    if month == 12:
+        next_month = {'year': year + 1, 'month': 1}
+    else:
+        next_month = {'year': year, 'month': month + 1}
+    
+    return render_template('calendar.html', 
+                         month_days=month_days,
+                         events_by_date=events_by_date,
+                         current_month=datetime(year, month, 1),
+                         prev_month=prev_month,
+                         next_month=next_month,
+                         today=date.today())
+
+@app.route('/api/move_event', methods=['POST'])
+@login_required
+def move_event():
+    if not current_user.is_host:
+        return jsonify({'error': 'Only hosts can move events'}), 403
+    
+    data = request.get_json()
+    event_id = data.get('event_id')
+    old_date = datetime.strptime(data.get('old_date'), '%Y-%m-%d').date()
+    new_date = datetime.strptime(data.get('new_date'), '%Y-%m-%d').date()
+    
+    event = Event.query.get_or_404(event_id)
+    
+    # Check if user owns this event
+    if event.host_id != current_user.id:
+        return jsonify({'error': 'You can only move your own events'}), 403
+    
+    # Update the event's day of week
+    event.day_of_week = new_date.strftime('%A')
+    
+    # Move all signups from old date to new date
+    signups = Signup.query.filter_by(event_id=event_id, event_date=old_date).all()
+    for signup in signups:
+        signup.event_date = new_date
+    
+    # Move any cancellations
+    cancellations = EventCancellation.query.filter_by(event_id=event_id, cancelled_date=old_date).all()
+    for cancellation in cancellations:
+        cancellation.cancelled_date = new_date
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Event moved successfully'})
+
+@app.route('/api/calendar_events')
+@login_required
+def calendar_events_api():
+    year = request.args.get('year', default=datetime.now().year, type=int)
+    month = request.args.get('month', default=datetime.now().month, type=int)
+    
+    # Get events for the month
+    start_date = date(year, month, 1)
+    if month == 12:
+        end_date = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end_date = date(year, month + 1, 1) - timedelta(days=1)
+    
+    events = Event.query.filter_by(is_active=True).all()
+    
+    calendar_events = []
+    for day in range(1, (end_date - start_date).days + 2):
+        current_date = start_date + timedelta(days=day-1)
+        
+        for event in events:
+            if current_date.strftime('%A') == event.day_of_week:
+                # Check if not cancelled
+                cancellation = EventCancellation.query.filter_by(
+                    event_id=event.id,
+                    cancelled_date=current_date
+                ).first()
+                
+                if not cancellation:
+                    signup_count = Signup.query.filter_by(
+                        event_id=event.id,
+                        event_date=current_date
+                    ).count()
+                    
+                    calendar_events.append({
+                        'id': event.id,
+                        'title': event.name,
+                        'venue': event.venue,
+                        'start_time': event.start_time.strftime('%H:%M'),
+                        'date': current_date.isoformat(),
+                        'signup_count': signup_count,
+                        'max_signups': event.max_signups,
+                        'is_owner': event.host_id == current_user.id
+                    })
+    
+    return jsonify(calendar_events)
 
 # Import routes to register them
 if __name__ != '__main__':

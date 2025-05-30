@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Event Calendar{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-calendar-alt me-2"></i>Event Calendar</h2>
+            <div class="btn-group">
+                <a href="{{ url_for('calendar_view', year=prev_month.year, month=prev_month.month) }}" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <span class="btn btn-secondary">
+                    {{ current_month.strftime('%B %Y') }}
+                </span>
+                <a href="{{ url_for('calendar_view', year=next_month.year, month=next_month.month) }}" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+
+        {% if current_user.is_host %}
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Host Controls:</strong> You can drag and drop your events to move them to different dates.
+        </div>
+        {% endif %}
+
+        <div class="calendar-container">
+            <div class="calendar-grid">
+                <!-- Days of week header -->
+                <div class="calendar-header">
+                    <div class="calendar-day-header">Sun</div>
+                    <div class="calendar-day-header">Mon</div>
+                    <div class="calendar-day-header">Tue</div>
+                    <div class="calendar-day-header">Wed</div>
+                    <div class="calendar-day-header">Thu</div>
+                    <div class="calendar-day-header">Fri</div>
+                    <div class="calendar-day-header">Sat</div>
+                </div>
+
+                <!-- Calendar days -->
+                <div class="calendar-body">
+                    {% for week in month_days %}
+                        {% for day in week %}
+                            {% set current_date = None %}
+                            {% if day != 0 %}
+                                {% set current_date = current_month.replace(day=day).date() %}
+                            {% endif %}
+                            
+                            <div class="calendar-day {% if day == 0 %}empty-day{% endif %} 
+                                        {% if current_date == today %}today{% endif %}"
+                                 {% if current_date %}data-date="{{ current_date.isoformat() }}"{% endif %}>
+                                
+                                {% if day != 0 %}
+                                    <div class="day-number">{{ day }}</div>
+                                    
+                                    {% if current_date in events_by_date %}
+                                        {% for event_data in events_by_date[current_date] %}
+                                            <div class="calendar-event 
+                                                        {% if event_data.event.host_id == current_user.id %}owner-event draggable{% endif %}"
+                                                 data-event-id="{{ event_data.event.id }}"
+                                                 data-event-date="{{ event_data.date.isoformat() }}"
+                                                 draggable="{% if event_data.event.host_id == current_user.id %}true{% else %}false{% endif %}">
+                                                
+                                                <div class="event-content">
+                                                    <div class="event-title">{{ event_data.event.name }}</div>
+                                                    <div class="event-venue">{{ event_data.event.venue }}</div>
+                                                    <div class="event-time">{{ event_data.event.start_time.strftime('%I:%M %p') }}</div>
+                                                    <div class="event-signups">
+                                                        <i class="fas fa-users"></i> 
+                                                        {{ event_data.signup_count }}/{{ event_data.event.max_signups }}
+                                                    </div>
+                                                </div>
+                                                
+                                                {% if event_data.event.host_id == current_user.id %}
+                                                    <div class="event-actions">
+                                                        <i class="fas fa-grip-vertical drag-handle"></i>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Details Modal -->
+        <div class="modal fade" id="eventModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Event Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="eventDetails"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <a href="#" id="eventDetailsLink" class="btn btn-primary">View Event</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendar-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.calendar-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.calendar-day-header {
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+    color: #495057;
+}
+
+.calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(120px, auto);
+}
+
+.calendar-day {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    position: relative;
+    min-height: 120px;
+    background: white;
+    transition: background-color 0.2s;
+}
+
+.calendar-day:hover {
+    background-color: #f8f9fa;
+}
+
+.calendar-day.today {
+    background-color: #e3f2fd;
+}
+
+.calendar-day.drag-over {
+    background-color: #c8e6c9;
+    border-color: #4caf50;
+}
+
+.empty-day {
+    background-color: #f8f9fa;
+    opacity: 0.5;
+}
+
+.day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #495057;
+}
+
+.calendar-event {
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.calendar-event:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.calendar-event.draggable {
+    cursor: grab;
+}
+
+.calendar-event.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    cursor: grabbing;
+}
+
+.owner-event {
+    background: #28a745;
+}
+
+.owner-event:hover {
+    background: #1e7e34;
+}
+
+.event-content {
+    pointer-events: none;
+}
+
+.event-title {
+    font-weight: bold;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-venue, .event-time, .event-signups {
+    font-size: 0.7rem;
+    opacity: 0.9;
+    margin-bottom: 1px;
+}
+
+.event-actions {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.calendar-event:hover .event-actions {
+    opacity: 1;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.drag-placeholder {
+    background: #ffc107;
+    border: 2px dashed #ff9800;
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    color: #333;
+    font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .calendar-body {
+        grid-auto-rows: minmax(80px, auto);
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+        padding: 4px;
+    }
+    
+    .calendar-event {
+        font-size: 0.7rem;
+        padding: 2px 4px;
+    }
+    
+    .day-number {
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let draggedEvent = null;
+    let draggedEventData = null;
+
+    // Add click handlers for event details
+    document.querySelectorAll('.calendar-event').forEach(event => {
+        event.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showEventDetails(this);
+        });
+    });
+
+    // Drag and drop functionality
+    document.querySelectorAll('.calendar-event.draggable').forEach(event => {
+        event.addEventListener('dragstart', function(e) {
+            draggedEvent = this;
+            draggedEventData = {
+                eventId: this.dataset.eventId,
+                oldDate: this.dataset.eventDate
+            };
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        event.addEventListener('dragend', function(e) {
+            this.classList.remove('dragging');
+            draggedEvent = null;
+            draggedEventData = null;
+            
+            // Remove drag-over class from all days
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('drag-over');
+            });
+        });
+    });
+
+    // Drop zone handlers
+    document.querySelectorAll('.calendar-day[data-date]').forEach(day => {
+        day.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        });
+
+        day.addEventListener('dragleave', function(e) {
+            this.classList.remove('drag-over');
+        });
+
+        day.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            if (draggedEvent && draggedEventData) {
+                const newDate = this.dataset.date;
+                
+                if (newDate !== draggedEventData.oldDate) {
+                    moveEvent(draggedEventData.eventId, draggedEventData.oldDate, newDate);
+                }
+            }
+        });
+    });
+
+    function showEventDetails(eventElement) {
+        const eventId = eventElement.dataset.eventId;
+        const eventDate = eventElement.dataset.eventDate;
+        
+        // You can expand this to show more details
+        const title = eventElement.querySelector('.event-title').textContent;
+        const venue = eventElement.querySelector('.event-venue').textContent;
+        const time = eventElement.querySelector('.event-time').textContent;
+        const signups = eventElement.querySelector('.event-signups').textContent;
+        
+        document.getElementById('eventDetails').innerHTML = `
+            <h6>${title}</h6>
+            <p><strong>Venue:</strong> ${venue}</p>
+            <p><strong>Time:</strong> ${time}</p>
+            <p><strong>Signups:</strong> ${signups}</p>
+            <p><strong>Date:</strong> ${new Date(eventDate).toLocaleDateString()}</p>
+        `;
+        
+        document.getElementById('eventDetailsLink').href = `/event/${eventId}`;
+        
+        new bootstrap.Modal(document.getElementById('eventModal')).show();
+    }
+
+    function moveEvent(eventId, oldDate, newDate) {
+        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+        
+        fetch('/api/move_event', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                event_id: eventId,
+                old_date: oldDate,
+                new_date: newDate
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Event moved successfully!', 'success');
+                // Reload the page to show updated calendar
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showNotification(data.error || 'Failed to move event', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error moving event:', error);
+            showNotification('Failed to move event', 'error');
+        });
+    }
+
+    function showNotification(message, type = 'info') {
+        const alertClass = type === 'success' ? 'alert-success' : 
+                          type === 'error' ? 'alert-danger' : 'alert-info';
+        
+        const notification = document.createElement('div');
+        notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}
