@@ -1,0 +1,24 @@
+[flake8]
+max-line-length = 88
+extend-ignore = E203, W503
+exclude =
+    *,
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .cache,
+    routes_old.py,
+    models_backup.py,
+    models_new.py,
+    direct_migration.py,
+    migrate_data.py,
+    migrate_database.py,
+    test_app.py,
+    tests/test_integration.py
+per-file-ignores =
+    # Allow unused imports in __init__.py files
+    __init__.py:F401
+    # Allow longer lines in migration files
+    *migration*.py:E501
+    # Allow unused imports in test files for now
+    tests/*.py:F401,F841

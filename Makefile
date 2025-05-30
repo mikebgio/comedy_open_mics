@@ -13,8 +13,9 @@ format:
 # Check code formatting without making changes
 check-format:
         @echo "Checking code formatting..."
-        python -m black --line-length=88 --check --diff .
-        python -m isort --profile=black --check-only --diff .
+        python -m black --line-length=88 --check --diff *.py tests/ scripts/
+        python -m isort --profile=black --check-only --diff *.py tests/ scripts/
+        python -m flake8 --max-line-length=88 --extend-ignore=E203,W503 *.py tests/ scripts/
         @echo "Format check completed!"
 
 # Install development dependencies

@@ -15,3 +15,10 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: flake8
+        name: Flake8 Linter
+        entry: python
+        args: [-m, flake8, --max-line-length=88, --extend-ignore=E203,W503, .]
+        language: system
+        types: [python]
+        pass_filenames: false
