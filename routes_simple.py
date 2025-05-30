@@ -113,7 +113,27 @@ def dashboard():
 @login_required
 def calendar_view():
     """Calendar view showing upcoming show instances"""
-    return render_template('calendar.html')
+    # Get current date info for calendar navigation
+    today = date.today()
+    current_year = today.year
+    current_month = today.month
+    
+    # Calculate previous and next month for navigation
+    if current_month == 1:
+        prev_month = date(current_year - 1, 12, 1)
+    else:
+        prev_month = date(current_year, current_month - 1, 1)
+    
+    if current_month == 12:
+        next_month = date(current_year + 1, 1, 1)
+    else:
+        next_month = date(current_year, current_month + 1, 1)
+    
+    return render_template('calendar.html',
+                         current_year=current_year,
+                         current_month=current_month,
+                         prev_month=prev_month,
+                         next_month=next_month)
 
 
 @app.route('/api/calendar/events')
