@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -44,6 +45,11 @@ with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
     db.create_all()
+
+# Make current year available to all templates
+@app.context_processor
+def inject_current_year():
+    return {'current_year': datetime.now().year}
 
 # Import routes to register them with the app
 import routes  # noqa: F401
