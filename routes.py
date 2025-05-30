@@ -1,10 +1,18 @@
 import random
 from datetime import datetime, date, timedelta
+from urllib.parse import urlparse, urljoin
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
 from models import User, Event, Signup, EventCancellation
 from forms import RegistrationForm, LoginForm, EventForm, SignupForm, CancellationForm
+
+
+def is_safe_url(target):
+    """Check if the target URL is safe for redirects (same domain only)."""
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
 
 @app.route('/')
@@ -65,7 +73,7 @@ def login():
         if user and user.check_password(form.password.data):
             login_user(user)
             next_page = request.args.get('next')
-            if not next_page:
+            if not next_page or not is_safe_url(next_page):
                 return redirect(url_for('dashboard'))
             return redirect(next_page)
         flash('Invalid username or password')
