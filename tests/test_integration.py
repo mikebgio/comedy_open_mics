@@ -8,7 +8,7 @@ import tempfile
 import os
 from datetime import datetime, date, time, timedelta
 from app import app, db
-from models import User, Event, Signup, EventCancellation
+from models import User, Show, ShowInstance, Signup
 
 @pytest.fixture
 def client():
