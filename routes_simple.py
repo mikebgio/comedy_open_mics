@@ -159,6 +159,35 @@ def host_dashboard():
                          all_shows=all_shows)
 
 
+@app.route('/host/create-event', methods=['GET', 'POST'])
+@login_required
+def create_event():
+    """Create a new recurring show"""
+    form = EventForm()
+    if form.validate_on_submit():
+        # Create new show
+        show = Show(
+            name=form.name.data,
+            venue=form.venue.data,
+            address=form.address.data,
+            description=form.description.data,
+            day_of_week=form.day_of_week.data,
+            start_time=form.start_time.data,
+            end_time=form.end_time.data,
+            max_signups=form.max_signups.data,
+            signup_window_after_hours=form.signup_deadline_hours.data,
+            owner_id=current_user.id,
+            default_host_id=current_user.id
+        )
+        db.session.add(show)
+        db.session.commit()
+        
+        flash('Show created successfully!')
+        return redirect(url_for('host_dashboard'))
+    
+    return render_template('host/create_event.html', form=form)
+
+
 @app.route('/calendar')
 @login_required
 def calendar_view():

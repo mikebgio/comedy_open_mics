@@ -48,7 +48,7 @@
                         {% for day in week %}
                             {% set current_date = None %}
                             {% if day != 0 %}
-                                {% set current_date = current_month.replace(day=day).date() %}
+                                {% set current_date = current_month.replace(day=day) %}
                             {% endif %}
                             
                             <div class="calendar-day {% if day == 0 %}empty-day{% endif %} 
