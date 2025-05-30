@@ -109,6 +109,56 @@ def dashboard():
                          recent_signups=recent_signups)
 
 
+@app.route('/comedian/dashboard')
+@login_required
+def comedian_dashboard():
+    """Comedian-specific dashboard showing available shows to sign up for"""
+    # Get upcoming show instances within the next month
+    one_month_from_now = date.today() + timedelta(days=30)
+    upcoming_instances = ShowInstance.query.join(Show).filter(
+        Show.is_deleted == False,
+        ShowInstance.instance_date >= date.today(),
+        ShowInstance.instance_date <= one_month_from_now,
+        ShowInstance.is_cancelled == False
+    ).order_by(ShowInstance.instance_date).all()
+    
+    # Get user's current signups
+    user_signups = Signup.query.filter_by(comedian_id=current_user.id).all()
+    signup_instance_ids = [signup.show_instance_id for signup in user_signups]
+    
+    return render_template('comedian/dashboard.html', 
+                         events=upcoming_instances, 
+                         user_signups=user_signups, 
+                         signup_event_ids=signup_instance_ids)
+
+
+@app.route('/host/dashboard')
+@login_required
+def host_dashboard():
+    """Host-specific dashboard for managing shows and lineups"""
+    # Get shows user can manage
+    owned_shows = Show.query.filter_by(owner_id=current_user.id, is_deleted=False).all()
+    
+    # Get shows where user is a runner or host
+    runner_show_ids = [sr.show_id for sr in current_user.show_runner_roles]
+    host_show_ids = [sh.show_id for sh in current_user.show_host_roles]
+    
+    managed_shows = []
+    if runner_show_ids or host_show_ids:
+        all_managed_ids = list(set(runner_show_ids + host_show_ids))
+        managed_shows = Show.query.filter(
+            Show.id.in_(all_managed_ids),
+            Show.is_deleted == False
+        ).all()
+    
+    all_shows = owned_shows + managed_shows
+    
+    return render_template('host/dashboard.html', 
+                         owned_shows=owned_shows,
+                         managed_shows=managed_shows,
+                         all_shows=all_shows)
+
+
 @app.route('/calendar')
 @login_required
 def calendar_view():
@@ -131,7 +181,7 @@ def calendar_view():
     
     return render_template('calendar.html',
                          current_year=current_year,
-                         current_month=current_month,
+                         current_month=today.replace(day=1),
                          prev_month=prev_month,
                          next_month=next_month)
 
