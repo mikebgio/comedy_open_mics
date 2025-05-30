@@ -128,7 +128,7 @@ class ComedyOpenMicTestCase(unittest.TestCase):
     def test_event_creation(self):
         """Test event creation by host."""
         # Create and login test user
-        user = self.create_test_user()
+        user_id = self.create_test_user()
         self.login_user()
         
         # Create event
@@ -153,7 +153,7 @@ class ComedyOpenMicTestCase(unittest.TestCase):
             self.assertIsNotNone(event)
             self.assertEqual(event.venue, 'Test Comedy Club')
             
-            updated_user = User.query.get(user.id)
+            updated_user = User.query.get(user_id)
             self.assertTrue(updated_user.is_host)
     
     def test_comedian_signup_for_event(self):
