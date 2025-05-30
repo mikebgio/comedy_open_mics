@@ -179,11 +179,48 @@ def calendar_view():
     else:
         next_month = date(current_year, current_month + 1, 1)
     
+    # Get show instances for the current month
+    current_month_start = today.replace(day=1)
+    if current_month == 12:
+        next_month_start = date(current_year + 1, 1, 1)
+    else:
+        next_month_start = date(current_year, current_month + 1, 1)
+    
+    instances = ShowInstance.query.join(Show).filter(
+        Show.is_deleted == False,
+        ShowInstance.instance_date >= current_month_start,
+        ShowInstance.instance_date < next_month_start,
+        ShowInstance.is_cancelled == False
+    ).order_by(ShowInstance.instance_date).all()
+    
+    # Group events by date for template
+    events_by_date = {}
+    for instance in instances:
+        instance_date = instance.instance_date
+        if instance_date not in events_by_date:
+            events_by_date[instance_date] = []
+        
+        # Get signup count
+        signup_count = Signup.query.filter_by(show_instance_id=instance.id).count()
+        
+        events_by_date[instance_date].append({
+            'event': instance,
+            'date': instance_date,
+            'signup_count': signup_count
+        })
+    
+    # Generate calendar days for the current month
+    import calendar
+    cal = calendar.monthcalendar(current_year, current_month)
+    
     return render_template('calendar.html',
                          current_year=current_year,
                          current_month=today.replace(day=1),
                          prev_month=prev_month,
-                         next_month=next_month)
+                         next_month=next_month,
+                         events_by_date=events_by_date,
+                         month_days=cal,
+                         today=today)
 
 
 @app.route('/api/calendar/events')

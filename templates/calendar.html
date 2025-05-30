@@ -62,14 +62,14 @@
                                     {% if current_date in events_by_date %}
                                         {% for event_data in events_by_date[current_date] %}
                                             <div class="calendar-event 
-                                                        {% if event_data.event.host_id == current_user.id %}owner-event draggable{% endif %}"
+                                                        {% if event_data.event.show.owner_id == current_user.id %}owner-event draggable{% endif %}"
                                                  data-event-id="{{ event_data.event.id }}"
                                                  data-event-date="{{ event_data.date.isoformat() }}"
-                                                 draggable="{% if event_data.event.host_id == current_user.id %}true{% else %}false{% endif %}">
+                                                 draggable="{% if event_data.event.show.owner_id == current_user.id %}true{% else %}false{% endif %}">
                                                 
                                                 <div class="event-content">
-                                                    <div class="event-title">{{ event_data.event.name }}</div>
-                                                    <div class="event-venue">{{ event_data.event.venue }}</div>
+                                                    <div class="event-title">{{ event_data.event.show.name }}</div>
+                                                    <div class="event-venue">{{ event_data.event.show.venue }}</div>
                                                     <div class="event-time">{{ event_data.event.start_time.strftime('%I:%M %p') }}</div>
                                                     <div class="event-signups">
                                                         <i class="fas fa-users"></i> 
@@ -77,7 +77,7 @@
                                                     </div>
                                                 </div>
                                                 
-                                                {% if event_data.event.host_id == current_user.id %}
+                                                {% if event_data.event.show.owner_id == current_user.id %}
                                                     <div class="event-actions">
                                                         <i class="fas fa-grip-vertical drag-handle"></i>
                                                     </div>
