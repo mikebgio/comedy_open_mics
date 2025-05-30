@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+    </h2>
+    <span class="badge bg-primary fs-6">{{ current_user.primary_role }}</span>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fas fa-user-tie fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Comedian Dashboard</h5>
+                <p class="card-text">View your upcoming performances and sign up for new open mic events.</p>
+                <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-primary">
+                    <i class="fas fa-microphone me-2"></i>View Comedian Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Host Dashboard</h5>
+                <p class="card-text">Manage your events, organize lineups, and create new open mic nights.</p>
+                <a href="{{ url_for('host_dashboard') }}" class="btn btn-success">
+                    <i class="fas fa-calendar-plus me-2"></i>View Host Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not current_user.email_verified %}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <strong>Email Verification Required:</strong> Please check your email and verify your account to access all features.
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Quick Stats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-primary">{{ current_user.signups|length }}</h4>
+                            <small class="text-muted">Total Signups</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-success">{{ current_user.events|length }}</h4>
+                            <small class="text-muted">Events Hosted</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-info">{{ 'Verified' if current_user.email_verified else 'Pending' }}</h4>
+                            <small class="text-muted">Email Status</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-warning">{{ current_user.created_at.strftime('%b %Y') }}</h4>
+                            <small class="text-muted">Member Since</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -137,7 +137,7 @@ def comedian_dashboard():
 @app.route('/comedian/signup/<int:event_id>', methods=['GET', 'POST'])
 @login_required
 def signup_for_event(event_id):
-    if current_user.role != 'comedian':
+    if not current_user.is_comedian:
         flash('Access denied.')
         return redirect(url_for('index'))
     
@@ -208,7 +208,7 @@ def signup_for_event(event_id):
 @app.route('/host/dashboard')
 @login_required
 def host_dashboard():
-    if current_user.role != 'host':
+    if not current_user.is_host:
         flash('Access denied.')
         return redirect(url_for('index'))
     
@@ -218,9 +218,10 @@ def host_dashboard():
 @app.route('/host/create_event', methods=['GET', 'POST'])
 @login_required
 def create_event():
-    if current_user.role != 'host':
-        flash('Access denied.')
-        return redirect(url_for('index'))
+    # Allow any user to create events, making them a host
+    if not current_user.is_host:
+        current_user.become_host()
+        db.session.commit()
     
     form = EventForm()
     if form.validate_on_submit():
@@ -246,7 +247,7 @@ def create_event():
 @app.route('/host/manage_lineup/<int:event_id>')
 @login_required
 def manage_lineup(event_id):
-    if current_user.role != 'host':
+    if not current_user.is_host:
         flash('Access denied.')
         return redirect(url_for('index'))
     
@@ -274,7 +275,7 @@ def manage_lineup(event_id):
 @app.route('/host/reorder_lineup/<int:event_id>', methods=['POST'])
 @login_required
 def reorder_lineup(event_id):
-    if current_user.role != 'host':
+    if not current_user.is_host:
         return jsonify({'error': 'Access denied'}), 403
     
     event = Event.query.get_or_404(event_id)
@@ -294,7 +295,7 @@ def reorder_lineup(event_id):
 @app.route('/host/random_select/<int:event_id>')
 @login_required
 def random_select(event_id):
-    if current_user.role != 'host':
+    if not current_user.is_host:
         flash('Access denied.')
         return redirect(url_for('index'))
     
@@ -338,7 +339,7 @@ def random_select(event_id):
 @app.route('/host/cancel_event/<int:event_id>', methods=['GET', 'POST'])
 @login_required
 def cancel_event(event_id):
-    if current_user.role != 'host':
+    if not current_user.is_host:
         flash('Access denied.')
         return redirect(url_for('index'))
     

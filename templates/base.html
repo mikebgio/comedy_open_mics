@@ -44,7 +44,12 @@
                             </a>
                             <ul class="dropdown-menu">
                                 <li><h6 class="dropdown-header">{{ current_user.full_name }}</h6></li>
-                                <li><span class="dropdown-item-text">{{ current_user.role.title() }}</span></li>
+                                <li><span class="dropdown-item-text">{{ current_user.primary_role }}</span></li>
+                                {% if not current_user.email_verified %}
+                                <li><span class="dropdown-item-text text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Email Unverified
+                                </span></li>
+                                {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">
                                     <i class="fas fa-sign-out-alt me-1"></i>Logout

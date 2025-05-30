@@ -65,19 +65,10 @@
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.role.label(class="form-label") }}
-                        {{ form.role(class="form-select") }}
-                        {% if form.role.errors %}
-                            <div class="text-danger">
-                                {% for error in form.role.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        <div class="form-text">
-                            Choose "Comedian" to sign up for open mics, or "Host" to create and manage events.
-                        </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Getting Started:</strong> You'll start as a comedian and can sign up for open mics. 
+                        When you create your first event, you'll automatically become a host too!
                     </div>
                     
                     <div class="row">
