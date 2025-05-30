@@ -8,9 +8,12 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'comedian' or 'host'
+    is_comedian = db.Column(db.Boolean, default=True, nullable=False)
+    is_host = db.Column(db.Boolean, default=False, nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -23,9 +26,32 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
+    def generate_verification_token(self):
+        import secrets
+        self.email_verification_token = secrets.token_urlsafe(32)
+        return self.email_verification_token
+    
+    def verify_email(self):
+        self.email_verified = True
+        self.email_verification_token = None
+    
+    def become_host(self):
+        """Make this user a host when they create their first event"""
+        self.is_host = True
+    
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def primary_role(self):
+        """Return the primary role for display purposes"""
+        if self.is_host and self.is_comedian:
+            return "Host & Comedian"
+        elif self.is_host:
+            return "Host"
+        else:
+            return "Comedian"
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)

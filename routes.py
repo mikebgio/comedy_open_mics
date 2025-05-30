@@ -5,6 +5,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
 from models import User, Event, Signup, EventCancellation
 from forms import RegistrationForm, LoginForm, EventForm, SignupForm, CancellationForm
+from email_service import send_verification_email, send_welcome_email
 
 @app.route('/')
 def index():
@@ -36,15 +37,24 @@ def register():
     if form.validate_on_submit():
         user = User(
             username=form.username.data,
-            email=form.email.data,
+            email=form.email.data.lower().strip(),
             first_name=form.first_name.data,
             last_name=form.last_name.data,
-            role=form.role.data
+            is_comedian=True,
+            is_host=False
         )
         user.set_password(form.password.data)
+        user.generate_verification_token()
+        
         db.session.add(user)
         db.session.commit()
-        flash('Registration successful!')
+        
+        # Send verification email
+        if send_verification_email(user):
+            flash('Registration successful! Please check your email to verify your account.')
+        else:
+            flash('Registration successful! You can now log in.')
+            
         return redirect(url_for('login'))
     
     return render_template('auth/register.html', form=form)
@@ -74,18 +84,39 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('index'))
 
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.query.filter_by(email_verification_token=token).first()
+    if not user:
+        flash('Invalid or expired verification link.')
+        return redirect(url_for('login'))
+    
+    user.verify_email()
+    db.session.commit()
+    
+    send_welcome_email(user)
+    flash('Email verified successfully! Welcome to Comedy Open Mic Manager.')
+    login_user(user)
+    return redirect(url_for('dashboard'))
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    if current_user.role == 'comedian':
-        return redirect(url_for('comedian_dashboard'))
-    elif current_user.role == 'host':
+    if not current_user.email_verified:
+        flash('Please verify your email address to access all features.')
+        
+    if current_user.is_host and current_user.is_comedian:
+        # Show combined dashboard or let user choose
+        return render_template('combined_dashboard.html')
+    elif current_user.is_host:
         return redirect(url_for('host_dashboard'))
+    else:
+        return redirect(url_for('comedian_dashboard'))
 
 @app.route('/comedian/dashboard')
 @login_required
 def comedian_dashboard():
-    if current_user.role != 'comedian':
+    if not current_user.is_comedian:
         flash('Access denied.')
         return redirect(url_for('index'))
     
