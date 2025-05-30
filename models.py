@@ -86,7 +86,9 @@ class Show(db.Model):
     day_of_week = db.Column(db.String(20), nullable=False)  # Monday, Tuesday, etc.
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=True)
-    repeat_cadence = db.Column(db.String(20), default='weekly')  # weekly, bi-weekly, monthly, custom
+    repeat_cadence = db.Column(
+        db.String(20), default="weekly"
+    )  # weekly, bi-weekly, monthly, custom
     custom_repeat_days = db.Column(db.Integer, nullable=True)  # For custom cadence
     
     # Show lifecycle

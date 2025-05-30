@@ -70,23 +70,37 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
 
 class EventForm(FlaskForm):
-    name = StringField('Event Name', validators=[DataRequired(), Length(max=100)])
-    venue = StringField('Venue', validators=[DataRequired(), Length(max=100)])
-    address = StringField('Address', validators=[DataRequired(), Length(max=200)])
-    day_of_week = SelectField('Day of Week', choices=[
-        ('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'),
-        ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'),
-        ('Sunday', 'Sunday')
-    ], validators=[DataRequired()])
-    start_time = TimeField('Start Time', validators=[DataRequired()])
-    end_time = TimeField('End Time', validators=[DataRequired()])
-    description = TextAreaField('Description')
-    max_signups = IntegerField('Maximum Signups', validators=[DataRequired(), NumberRange(min=1, max=50)])
-    signup_deadline_hours = IntegerField('Signup Deadline (hours before)', validators=[DataRequired(), NumberRange(min=0, max=72)])
+    name = StringField("Event Name", validators=[DataRequired(), Length(max=100)])
+    venue = StringField("Venue", validators=[DataRequired(), Length(max=100)])
+    address = StringField("Address", validators=[DataRequired(), Length(max=200)])
+    day_of_week = SelectField(
+        "Day of Week",
+        choices=[
+            ("Monday", "Monday"),
+            ("Tuesday", "Tuesday"),
+            ("Wednesday", "Wednesday"),
+            ("Thursday", "Thursday"),
+            ("Friday", "Friday"),
+            ("Saturday", "Saturday"),
+            ("Sunday", "Sunday"),
+        ],
+        validators=[DataRequired()],
+    )
+    start_time = TimeField("Start Time", validators=[DataRequired()])
+    end_time = TimeField("End Time", validators=[DataRequired()])
+    description = TextAreaField("Description")
+    max_signups = IntegerField(
+        "Maximum Signups", validators=[DataRequired(), NumberRange(min=1, max=50)]
+    )
+    signup_deadline_hours = IntegerField(
+        "Signup Deadline (hours before)",
+        validators=[DataRequired(), NumberRange(min=0, max=72)],
+    )
 
 class SignupForm(FlaskForm):
-    notes = TextAreaField('Notes (Optional)', validators=[Length(max=500)])
+    notes = TextAreaField("Notes (Optional)", validators=[Length(max=500)])
+
 
 class CancellationForm(FlaskForm):
-    cancelled_date = DateField('Date to Cancel', validators=[DataRequired()])
-    reason = StringField('Reason (Optional)', validators=[Length(max=200)])
+    cancelled_date = DateField("Date to Cancel", validators=[DataRequired()])
+    reason = StringField("Reason (Optional)", validators=[Length(max=200)])
