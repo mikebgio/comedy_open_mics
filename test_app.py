@@ -51,23 +51,22 @@ class ComedyOpenMicTestCase(unittest.TestCase):
     
     def create_test_event(self, host_user, name="Test Comedy Show"):
         """Helper method to create a test event."""
-        with app.app_context():
-            event = Event(
-                name=name,
-                venue="Test Venue",
-                address="123 Test St, Boston, MA",
-                day_of_week="Monday",
-                start_time=time(19, 30),
-                end_time=time(22, 0),
-                description="Test comedy event",
-                max_signups=20,
-                signup_deadline_hours=2,
-                host_id=host_user.id,
-                is_active=True
-            )
-            db.session.add(event)
-            db.session.commit()
-            return event
+        event = Event(
+            name=name,
+            venue="Test Venue",
+            address="123 Test St, Boston, MA",
+            day_of_week="Monday",
+            start_time=time(19, 30),
+            end_time=time(22, 0),
+            description="Test comedy event",
+            max_signups=20,
+            signup_deadline_hours=2,
+            host_id=host_user.id,
+            is_active=True
+        )
+        db.session.add(event)
+        db.session.commit()
+        return event
     
     def login_user(self, username="testuser", password="testpassword"):
         """Helper method to log in a user."""
@@ -153,7 +152,10 @@ class ComedyOpenMicTestCase(unittest.TestCase):
         """Test comedian signing up for an event."""
         # Create host and event
         host = self.create_test_user(username="host", email="host@example.com", is_host=True)
-        event = self.create_test_event(host)
+        with app.app_context():
+            # Refresh the host object to ensure it's attached to the current session
+            host = User.query.get(host.id)
+            event = self.create_test_event(host)
         
         # Create comedian and login
         comedian = self.create_test_user(username="comedian", email="comedian@example.com")
