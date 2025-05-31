@@ -180,7 +180,8 @@ def test_database_constraints(client):
     )
 
     assert response.status_code == 200
-    assert b"Username already exists" in response.data
+    # Check for the actual validation error message from forms.py
+    assert b"Please use a different username" in response.data
 
 
 def test_show_instance_creation(client):
