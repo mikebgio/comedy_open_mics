@@ -172,6 +172,7 @@ def host_dashboard():
 
     return render_template(
         "host/dashboard.html",
+        events=all_shows,  # Use 'events' to match template expectations
         owned_shows=owned_shows,
         managed_shows=managed_shows,
         all_shows=all_shows,
