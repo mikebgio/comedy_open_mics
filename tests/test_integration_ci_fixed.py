@@ -81,7 +81,7 @@ def test_full_user_journey(client):
     assert b"Show created successfully" in response.data
 
 
-def test_event_management_workflow(client):
+def test_show_management_workflow(client):
     """Test show management features for hosts."""
 
     # Register and login as host
