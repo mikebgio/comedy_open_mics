@@ -211,10 +211,10 @@ def create_event():
 @login_required
 def calendar_view():
     """Calendar view showing upcoming show instances"""
-    # Get current date info for calendar navigation
+    # Get requested year/month or default to current
     today = date.today()
-    current_year = today.year
-    current_month = today.month
+    current_year = request.args.get("year", default=today.year, type=int)
+    current_month = request.args.get("month", default=today.month, type=int)
 
     # Calculate previous and next month for navigation
     if current_month == 1:
@@ -227,8 +227,8 @@ def calendar_view():
     else:
         next_month = date(current_year, current_month + 1, 1)
 
-    # Get show instances for the current month
-    current_month_start = today.replace(day=1)
+    # Get show instances for the requested month
+    month_start = date(current_year, current_month, 1)
     if current_month == 12:
         next_month_start = date(current_year + 1, 1, 1)
     else:
@@ -238,7 +238,7 @@ def calendar_view():
         ShowInstance.query.join(Show)
         .filter(
             Show.is_deleted == False,
-            ShowInstance.instance_date >= current_month_start,
+            ShowInstance.instance_date >= month_start,
             ShowInstance.instance_date < next_month_start,
             ShowInstance.is_cancelled == False,
         )
@@ -260,7 +260,7 @@ def calendar_view():
             {"event": instance, "date": instance_date, "signup_count": signup_count}
         )
 
-    # Generate calendar days for the current month
+    # Generate calendar days for the requested month
     import calendar
 
     cal = calendar.monthcalendar(current_year, current_month)
@@ -268,7 +268,7 @@ def calendar_view():
     return render_template(
         "calendar.html",
         current_year=current_year,
-        current_month=today.replace(day=1),
+        current_month=date(current_year, current_month, 1),
         prev_month=prev_month,
         next_month=next_month,
         events_by_date=events_by_date,
