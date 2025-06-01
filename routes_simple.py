@@ -200,6 +200,30 @@ def create_event():
             default_host_id=current_user.id,
         )
         db.session.add(show)
+        db.session.flush()  # Get the show ID
+
+        # Create show instances for the next 3 months
+        from datetime import timedelta
+
+        current_date = date.today()
+        end_date = current_date + timedelta(days=90)  # 3 months ahead
+
+        # Find the next occurrence of this day of week
+        target_date = show.get_next_instance_date(current_date)
+
+        while target_date and target_date <= end_date:
+            # Check if instance already exists
+            existing_instance = ShowInstance.query.filter_by(
+                show_id=show.id, instance_date=target_date
+            ).first()
+
+            if not existing_instance:
+                instance = ShowInstance(show_id=show.id, instance_date=target_date)
+                db.session.add(instance)
+
+            # Get next occurrence based on repeat cadence
+            target_date = show.get_next_instance_date(target_date + timedelta(days=1))
+
         db.session.commit()
 
         flash("Show created successfully!")
