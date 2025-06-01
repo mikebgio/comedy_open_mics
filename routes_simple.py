@@ -198,6 +198,8 @@ def create_event():
             signup_window_after_hours=form.signup_deadline_hours.data,
             owner_id=current_user.id,
             default_host_id=current_user.id,
+            show_host_info=form.show_host_info.data,
+            show_owner_info=form.show_owner_info.data,
         )
         db.session.add(show)
         db.session.flush()  # Get the show ID
@@ -230,6 +232,88 @@ def create_event():
         return redirect(url_for("host_dashboard"))
 
     return render_template("host/create_event.html", form=form)
+
+
+@app.route("/host/show/<int:show_id>/settings", methods=["GET", "POST"])
+@login_required
+def show_settings(show_id):
+    """Edit show settings including host management"""
+    from forms import ShowSettingsForm
+
+    show = Show.query.get_or_404(show_id)
+
+    # Check permissions
+    if not current_user.can_edit_show(show):
+        flash("Access denied.")
+        return redirect(url_for("host_dashboard"))
+
+    form = ShowSettingsForm(show=show)
+
+    if form.validate_on_submit():
+        # Update default host
+        if form.default_host_id.data == 0:
+            show.default_host_id = None
+        else:
+            show.default_host_id = form.default_host_id.data
+
+        # Update display settings
+        show.show_host_info = form.show_host_info.data
+        show.show_owner_info = form.show_owner_info.data
+
+        db.session.commit()
+        flash("Show settings updated successfully!")
+        return redirect(url_for("host_dashboard"))
+
+    # Pre-populate form with current values
+    form.default_host_id.data = show.default_host_id or 0
+    form.show_host_info.data = show.show_host_info
+    form.show_owner_info.data = show.show_owner_info
+
+    return render_template("host/show_settings.html", form=form, show=show)
+
+
+@app.route("/host/instance/<int:instance_id>/host", methods=["GET", "POST"])
+@login_required
+def manage_instance_host(instance_id):
+    """Assign host to specific show instance"""
+    from forms import InstanceHostForm
+    from models import ShowInstanceHost
+
+    instance = ShowInstance.query.get_or_404(instance_id)
+
+    # Check permissions
+    if not current_user.can_manage_lineup(instance.show):
+        flash("Access denied.")
+        return redirect(url_for("calendar_view"))
+
+    form = InstanceHostForm(show=instance.show)
+
+    if form.validate_on_submit():
+        # Remove existing instance host
+        existing_host = ShowInstanceHost.query.filter_by(
+            show_instance_id=instance_id
+        ).first()
+        if existing_host:
+            db.session.delete(existing_host)
+
+        # Add new instance host
+        new_host = ShowInstanceHost(
+            show_instance_id=instance_id, user_id=form.host_id.data
+        )
+        db.session.add(new_host)
+        db.session.commit()
+
+        flash("Instance host assigned successfully!")
+        return redirect(url_for("calendar_view"))
+
+    # Pre-populate with current instance host if exists
+    current_host = ShowInstanceHost.query.filter_by(
+        show_instance_id=instance_id
+    ).first()
+    if current_host:
+        form.host_id.data = current_host.user_id
+
+    return render_template("host/instance_host.html", form=form, instance=instance)
 
 
 @app.route("/calendar")

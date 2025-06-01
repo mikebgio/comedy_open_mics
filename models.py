@@ -114,6 +114,10 @@ class Show(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     default_host_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
 
+    # Display settings
+    show_host_info = db.Column(db.Boolean, default=True)  # Show host info publicly
+    show_owner_info = db.Column(db.Boolean, default=False)  # Show owner info publicly
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
