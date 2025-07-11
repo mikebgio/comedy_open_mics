@@ -135,6 +135,7 @@ The application uses a sophisticated data model with the following key entities:
   - Added comprehensive error handling and environment validation
   - Resolved API endpoint test failures (403 response handling)
   - Added informative job summaries and workflow reliability improvements
+  - Enhanced .gitignore with build artifacts and deployment file exclusions
 
 ## Technical Architecture
 
