@@ -65,10 +65,6 @@
                                             class="btn btn-sm btn-outline-success">
                                         <i class="fas fa-edit me-1"></i>Edit Event
                                     </button>
-                                    <button onclick="showSettingsModal({{ event.id }})" 
-                                            class="btn btn-sm btn-outline-warning">
-                                        <i class="fas fa-cog me-1"></i>Settings
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -196,35 +192,16 @@
     </div>
 </div>
 
-<!-- Settings Modal -->
-<div class="modal fade" id="settingsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Event Settings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="settingsContent">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <script>
-let currentEventId = null;
-let originalEventData = {};
-let hasChanges = false;
+let hostCurrentEventId = null;
+let hostOriginalEventData = {};
+let hostHasChanges = false;
 
 function showEventModal(eventId = null) {
-    currentEventId = eventId;
-    hasChanges = false;
+    hostCurrentEventId = eventId;
+    hostHasChanges = false;
     
     if (eventId) {
         // Edit mode
@@ -236,7 +213,7 @@ function showEventModal(eventId = null) {
         fetch(`/api/show/${eventId}`)
             .then(response => response.json())
             .then(data => {
-                originalEventData = data;
+                hostOriginalEventData = data;
                 populateEventForm(data);
                 setupChangeTracking();
             })
@@ -292,24 +269,24 @@ function setupChangeTracking() {
 
 function checkForChanges() {
     const currentData = getFormData();
-    hasChanges = false;
+    hostHasChanges = false;
     
     for (let key in currentData) {
-        if (currentData[key] !== originalEventData[key]) {
-            hasChanges = true;
+        if (currentData[key] !== hostOriginalEventData[key]) {
+            hostHasChanges = true;
             break;
         }
     }
     
-    document.getElementById('saveEventBtn').disabled = currentEventId && !hasChanges;
+    document.getElementById('saveEventBtn').disabled = hostCurrentEventId && !hostHasChanges;
     
     // Highlight changed fields
     const inputs = document.querySelectorAll('#eventForm input, #eventForm select, #eventForm textarea');
     inputs.forEach(input => {
         const fieldName = input.name;
-        if (currentEventId && originalEventData[fieldName] !== undefined) {
+        if (hostCurrentEventId && hostOriginalEventData[fieldName] !== undefined) {
             let currentValue = input.type === 'checkbox' ? input.checked : input.value;
-            let originalValue = originalEventData[fieldName];
+            let originalValue = hostOriginalEventData[fieldName];
             
             if (currentValue !== originalValue) {
                 input.classList.add('border-warning', 'bg-warning-subtle');
@@ -342,10 +319,10 @@ document.getElementById('saveEventBtn').addEventListener('click', function() {
     
     button.disabled = true;
     button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + 
-                      (currentEventId ? 'Updating...' : 'Creating...');
+                      (hostCurrentEventId ? 'Updating...' : 'Creating...');
     
-    const url = currentEventId ? `/api/show/${currentEventId}` : '/api/show';
-    const method = currentEventId ? 'PUT' : 'POST';
+    const url = hostCurrentEventId ? `/api/show/${hostCurrentEventId}` : '/api/show';
+    const method = hostCurrentEventId ? 'PUT' : 'POST';
     
     fetch(url, {
         method: method,
@@ -365,68 +342,17 @@ document.getElementById('saveEventBtn').addEventListener('click', function() {
         } else {
             showNotification(data.error, 'error');
             button.disabled = false;
-            button.innerHTML = currentEventId ? 'Update Event' : 'Create Event';
+            button.innerHTML = hostCurrentEventId ? 'Update Event' : 'Create Event';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showNotification('Failed to save event. Please try again.', 'error');
         button.disabled = false;
-        button.innerHTML = currentEventId ? 'Update Event' : 'Create Event';
+        button.innerHTML = hostCurrentEventId ? 'Update Event' : 'Create Event';
     });
 });
 
-function showSettingsModal(eventId) {
-    // Load settings content
-    fetch(`/show_settings/${eventId}`)
-        .then(response => response.text())
-        .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const content = doc.querySelector('.container').innerHTML;
-            
-            document.getElementById('settingsContent').innerHTML = content;
-            
-            // Convert form to modal form
-            const form = document.querySelector('#settingsContent form');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    // Handle form submission via AJAX
-                    const formData = new FormData(this);
-                    fetch(this.action, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(data.message, 'success');
-                            bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-                            setTimeout(() => location.reload(), 1000);
-                        } else {
-                            showNotification(data.error, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('Failed to save settings', 'error');
-                    });
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading settings:', error);
-            document.getElementById('settingsContent').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    Failed to load settings. Please try again.
-                </div>
-            `;
-        });
-    
-    const modal = new bootstrap.Modal(document.getElementById('settingsModal'));
-    modal.show();
-}
+
 </script>
 {% endblock %}
