@@ -528,7 +528,7 @@ def cancel_signup(signup_id):
         return redirect(url_for("dashboard"))
     
     show_name = signup.show_instance.show.name
-    comedian_name = signup.comedian.full_name() if signup.comedian else "Guest"
+    comedian_name = signup.comedian.full_name if signup.comedian else "Guest"
     
     db.session.delete(signup)
     db.session.commit()
