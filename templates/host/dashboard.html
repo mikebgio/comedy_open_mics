@@ -113,7 +113,10 @@
                         <label for="eventAddress" class="form-label">Address</label>
                         <input type="text" class="form-control" id="eventAddress" name="address" required placeholder="Start typing an address...">
                         <input type="hidden" id="eventTimezone" name="timezone" value="">
-                        <small class="form-text text-muted">Select from suggestions for accurate timezone detection</small>
+                        <small class="form-text text-muted">
+                            <span id="addressHelp">Select from suggestions for accurate timezone detection</span>
+                            <br><small class="text-warning" id="debugInfo" style="font-size: 0.8em;"></small>
+                        </small>
                     </div>
                     
                     <div class="row">
@@ -363,23 +366,36 @@ let autocomplete;
 let selectedTimezone = '';
 
 function initializeGoogleMaps() {
+    console.log('Initializing Google Maps autocomplete...');
+    
+    const addressField = document.getElementById('eventAddress');
+    if (!addressField) {
+        console.error('Address field not found!');
+        return;
+    }
+    
     // Initialize the autocomplete object
     autocomplete = new google.maps.places.Autocomplete(
-        document.getElementById('eventAddress'),
+        addressField,
         {
             types: ['address'],
             componentRestrictions: { country: ['us', 'ca'] } // Restrict to North America
         }
     );
 
+    console.log('Autocomplete initialized successfully');
+
     // Listen for the event fired when the user selects a prediction
     autocomplete.addListener('place_changed', function() {
+        console.log('Place changed event fired');
         const place = autocomplete.getPlace();
         
         if (!place.geometry) {
             console.log("No details available for input: '" + place.name + "'");
             return;
         }
+
+        console.log('Selected place:', place.formatted_address);
 
         // Get timezone from coordinates
         getTimezoneFromCoordinates(
@@ -394,6 +410,8 @@ function getTimezoneFromCoordinates(lat, lng, address) {
     // Use Google Maps Timezone API for precise timezone detection
     const timestamp = Math.floor(Date.now() / 1000);
     const apiKey = '{{ google_maps_api_key }}'; // Will be passed from backend
+    console.log('API Key available:', apiKey ? 'Yes' : 'No', apiKey ? apiKey.substring(0, 10) + '...' : '');
+    console.log('Raw API key from template:', '{{ google_maps_api_key }}');
     
     if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
         fetch(`https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${apiKey}`)
@@ -544,26 +562,56 @@ function loadGoogleMapsAPI() {
     }
     
     const apiKey = '{{ google_maps_api_key }}';
-    if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+    console.log('Loading Google Maps API with key:', apiKey ? apiKey.substring(0, 10) + '...' : 'Not provided');
+    
+    if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY' && apiKey.trim() !== '') {
+        // Check if Google Maps is already loaded
+        if (window.google && window.google.maps) {
+            console.log('Google Maps already loaded, initializing autocomplete...');
+            initializeGoogleMaps();
+            return;
+        }
+        
+        // Set up global callback for Google Maps API
+        window.initializeGoogleMaps = initializeGoogleMaps;
+        
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initializeGoogleMaps`;
         script.async = true;
         script.defer = true;
+        script.onload = function() {
+            console.log('Google Maps API loaded successfully');
+        };
+        script.onerror = function() {
+            console.error('Failed to load Google Maps API - network or API key issue');
+            document.getElementById('debugInfo').textContent = 'Maps API failed to load';
+            setupFallbackAddressDetection();
+        };
         document.head.appendChild(script);
+        console.log('Google Maps API script added to page with key:', apiKey.substring(0, 10) + '...');
     } else {
         console.log('Google Maps API key not available - using fallback address detection');
-        // Set up fallback address detection
-        document.getElementById('eventAddress').addEventListener('blur', function() {
-            const address = this.value;
-            if (address) {
-                fallbackTimezoneDetection(address);
-            }
-        });
+        document.getElementById('debugInfo').textContent = 'No API key - using fallback';
+        setupFallbackAddressDetection();
     }
+}
+
+function setupFallbackAddressDetection() {
+    // Set up fallback address detection
+    document.getElementById('eventAddress').addEventListener('blur', function() {
+        const address = this.value;
+        if (address) {
+            fallbackTimezoneDetection(address);
+        }
+    });
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    // Add debugging info
+    const debugInfo = document.getElementById('debugInfo');
+    debugInfo.textContent = 'API Key: {% if google_maps_api_key %}Available{% else %}Not Available{% endif %}';
+    
     // Load Google Maps API when the modal is shown for the first time
     let apiLoaded = false;
     document.getElementById('eventModal').addEventListener('shown.bs.modal', function() {
