@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Upcoming Lineups - {{ show.name }} - Comedy Open Mic Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>
+            <i class="fas fa-list me-2"></i>Upcoming Lineups
+        </h2>
+        <p class="text-muted mb-0">{{ show.name }} - {{ show.venue }}</p>
+    </div>
+    <a href="{{ url_for('host_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<div class="row">
+    {% if upcoming_instances %}
+        {% for instance in upcoming_instances %}
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            {{ instance.instance_date.strftime('%A, %B %d, %Y') }}
+                        </h5>
+                        {% if instance.is_cancelled %}
+                            <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                            <span class="badge bg-success">{{ instance.signups|length }}/{{ instance.max_signups }} signed up</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <p class="mb-1">
+                                <i class="fas fa-clock text-info me-2"></i>{{ instance.start_time.strftime('%I:%M %p') }}
+                                {% if instance.end_time %}
+                                    - {{ instance.end_time.strftime('%I:%M %p') }}
+                                {% endif %}
+                            </p>
+                            {% if instance.get_host_names() %}
+                                <p class="mb-1">
+                                    <i class="fas fa-user text-primary me-2"></i>Host: {{ instance.get_host_names() }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        {% if instance.is_cancelled %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Cancelled:</strong> {{ instance.cancellation_reason or 'No reason provided' }}
+                            </div>
+                        {% else %}
+                            <!-- Lineup Preview -->
+                            {% if instance.signups %}
+                                <div class="lineup-preview">
+                                    <h6 class="fw-bold mb-2">Current Lineup:</h6>
+                                    <div class="list-group list-group-flush">
+                                        {% for signup in instance.signups[:5] %}
+                                            <div class="list-group-item px-0 py-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <span class="fw-bold">{{ signup.comedian.full_name() }}</span>
+                                                        {% if signup.notes %}
+                                                            <br><small class="text-muted">{{ signup.notes[:50] }}{% if signup.notes|length > 50 %}...{% endif %}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                    {% if signup.position %}
+                                                        <span class="badge bg-primary">#{{ signup.position }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">TBD</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                        {% if instance.signups|length > 5 %}
+                                            <div class="list-group-item px-0 py-2 text-muted">
+                                                <i class="fas fa-ellipsis-h me-2"></i>{{ instance.signups|length - 5 }} more comedians...
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <p>No signups yet</p>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('live_lineup', event_id=instance.id) }}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="fas fa-list me-1"></i>Manage Lineup
+                            </a>
+                            {% if not instance.is_cancelled %}
+                                <button class="btn btn-sm btn-outline-warning" 
+                                        onclick="showCancelModal({{ instance.id }}, '{{ instance.instance_date.strftime('%B %d, %Y') }}')">
+                                    <i class="fas fa-ban me-1"></i>Cancel Show
+                                </button>
+                            {% else %}
+                                <button class="btn btn-sm btn-outline-success" 
+                                        onclick="restoreShow({{ instance.id }})">
+                                    <i class="fas fa-undo me-1"></i>Restore Show
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Upcoming Shows</h4>
+                <p class="text-muted">No upcoming instances for {{ show.name }}.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Cancel Show Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Show</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel the show on <strong id="cancelDate"></strong>?</p>
+                <div class="mb-3">
+                    <label for="cancelReason" class="form-label">Reason (Optional)</label>
+                    <input type="text" class="form-control" id="cancelReason" 
+                           placeholder="e.g., Venue unavailable, Weather, etc.">
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This will notify all signed-up comedians about the cancellation.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Show</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">Cancel Show</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentInstanceId = null;
+
+function showCancelModal(instanceId, date) {
+    currentInstanceId = instanceId;
+    document.getElementById('cancelDate').textContent = date;
+    document.getElementById('cancelReason').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    modal.show();
+}
+
+document.getElementById('confirmCancel').addEventListener('click', function() {
+    const reason = document.getElementById('cancelReason').value;
+    const button = this;
+    
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling...';
+    
+    fetch(`/cancel_show_instance/${currentInstanceId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to cancel show');
+            button.disabled = false;
+            button.innerHTML = 'Cancel Show';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to cancel show');
+        button.disabled = false;
+        button.innerHTML = 'Cancel Show';
+    });
+});
+
+function restoreShow(instanceId) {
+    if (confirm('Are you sure you want to restore this show?')) {
+        fetch(`/restore_show_instance/${instanceId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to restore show');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to restore show');
+        });
+    }
+}
+</script>
+{% endblock %}

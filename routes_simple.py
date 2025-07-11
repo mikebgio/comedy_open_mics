@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urljoin, urlparse
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
@@ -184,6 +184,200 @@ def host_dashboard():
         managed_shows=managed_shows,
         all_shows=all_shows,
     )
+
+
+@app.route("/host/upcoming_lineups/<int:show_id>")
+@login_required
+def upcoming_lineups(show_id):
+    """View upcoming lineups for a specific show"""
+    show = Show.query.get_or_404(show_id)
+    
+    # Check if user can manage this show
+    if not current_user.can_manage_lineup(show):
+        flash("You don't have permission to manage this show.", "error")
+        return redirect(url_for('host_dashboard'))
+    
+    # Get upcoming instances (next 10 instances)
+    from datetime import date, timedelta
+    upcoming_instances = (ShowInstance.query
+                         .filter(ShowInstance.show_id == show_id)
+                         .filter(ShowInstance.instance_date >= date.today())
+                         .order_by(ShowInstance.instance_date.asc())
+                         .limit(10)
+                         .all())
+    
+    return render_template("host/upcoming_lineups.html", 
+                         show=show, 
+                         upcoming_instances=upcoming_instances)
+
+
+@app.route("/cancel_show_instance/<int:instance_id>", methods=["POST"])
+@login_required
+def cancel_show_instance(instance_id):
+    """Cancel a specific show instance"""
+    instance = ShowInstance.query.get_or_404(instance_id)
+    
+    # Check permissions
+    if not current_user.can_manage_lineup(instance.show):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+    
+    reason = request.json.get('reason', '') if request.is_json else ''
+    instance.cancel(reason)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Show cancelled successfully'})
+
+
+@app.route("/restore_show_instance/<int:instance_id>", methods=["POST"])
+@login_required
+def restore_show_instance(instance_id):
+    """Restore a cancelled show instance"""
+    instance = ShowInstance.query.get_or_404(instance_id)
+    
+    # Check permissions
+    if not current_user.can_manage_lineup(instance.show):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+    
+    instance.uncancel()
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Show restored successfully'})
+
+
+@app.route("/api/show/<int:show_id>", methods=["GET"])
+@login_required
+def get_show_data(show_id):
+    """Get show data for editing"""
+    show = Show.query.get_or_404(show_id)
+    
+    # Check permissions
+    if not current_user.can_edit_show(show):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+    
+    return jsonify({
+        'id': show.id,
+        'name': show.name,
+        'venue': show.venue,
+        'address': show.address,
+        'day_of_week': show.day_of_week,
+        'start_time': show.start_time.strftime('%H:%M') if show.start_time else '',
+        'end_time': show.end_time.strftime('%H:%M') if show.end_time else '',
+        'description': show.description or '',
+        'max_signups': show.max_signups,
+        'signup_deadline_hours': show.signup_window_after_hours,
+        'show_host_info': show.show_host_info,
+        'show_owner_info': show.show_owner_info
+    })
+
+
+@app.route("/api/show", methods=["POST"])
+@login_required
+def create_show_api():
+    """Create a new show via API"""
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['name', 'venue', 'address', 'day_of_week', 'start_time', 'max_signups', 'signup_deadline_hours']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+    
+    try:
+        # Create new show
+        show = Show(
+            name=data['name'],
+            venue=data['venue'],
+            address=data['address'],
+            description=data.get('description', ''),
+            day_of_week=data['day_of_week'],
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time(),
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
+            max_signups=data['max_signups'],
+            signup_window_after_hours=data['signup_deadline_hours'],
+            owner_id=current_user.id,
+            default_host_id=current_user.id,
+            show_host_info=data.get('show_host_info', True),
+            show_owner_info=data.get('show_owner_info', False),
+        )
+        db.session.add(show)
+        db.session.flush()  # Get the show ID
+        
+        # Create show instances for the next 3 months
+        from datetime import timedelta
+        start_date = show.get_next_instance_date()
+        end_date = start_date + timedelta(days=90)
+        
+        current_date = start_date
+        while current_date <= end_date:
+            instance = ShowInstance(
+                show_id=show.id,
+                instance_date=current_date
+            )
+            db.session.add(instance)
+            current_date = show.get_next_instance_date(current_date)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully created {show.name}!',
+            'show_id': show.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/show/<int:show_id>", methods=["PUT"])
+@login_required
+def update_show_api(show_id):
+    """Update an existing show via API"""
+    show = Show.query.get_or_404(show_id)
+    
+    # Check permissions
+    if not current_user.can_edit_show(show):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        # Update show fields
+        if 'name' in data:
+            show.name = data['name']
+        if 'venue' in data:
+            show.venue = data['venue']
+        if 'address' in data:
+            show.address = data['address']
+        if 'description' in data:
+            show.description = data['description']
+        if 'day_of_week' in data:
+            show.day_of_week = data['day_of_week']
+        if 'start_time' in data:
+            show.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        if 'end_time' in data:
+            show.end_time = datetime.strptime(data['end_time'], '%H:%M').time() if data['end_time'] else None
+        if 'max_signups' in data:
+            show.max_signups = data['max_signups']
+        if 'signup_deadline_hours' in data:
+            show.signup_window_after_hours = data['signup_deadline_hours']
+        if 'show_host_info' in data:
+            show.show_host_info = data['show_host_info']
+        if 'show_owner_info' in data:
+            show.show_owner_info = data['show_owner_info']
+        
+        show.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {show.name}!',
+            'show_id': show.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route("/host/create-event", methods=["GET", "POST"])
