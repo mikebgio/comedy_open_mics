@@ -178,7 +178,7 @@ def test_api_endpoints(client):
     )
     # Accept various response codes:
     # 200: Success with valid data
-    # 403: Permission denied (user not authorized for this show)  
+    # 403: Permission denied (user not authorized for this show)
     # 404: Show instance not found
     # 405: Method not allowed
     assert response.status_code in [200, 403, 404, 405]
