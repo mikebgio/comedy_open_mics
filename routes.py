@@ -1,12 +1,36 @@
-from datetime import date, datetime, timedelta
-from urllib.parse import urljoin, urlparse
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import flash
+from flask import jsonify
+from flask import redirect
+from flask import render_template
+from flask import request
+from flask import url_for
+from flask_login import current_user
+from flask_login import login_required
+from flask_login import login_user
+from flask_login import logout_user
 
-from app import app, db
-from forms import EventForm, LoginForm, RegistrationForm, SignupForm, CancellationForm, ShowSettingsForm, InstanceHostForm
-from models import Show, ShowInstance, ShowInstanceHost, ShowRunner, ShowHost, Signup, User
+from app import app
+from app import db
+from forms import CancellationForm
+from forms import EventForm
+from forms import InstanceHostForm
+from forms import LoginForm
+from forms import RegistrationForm
+from forms import ShowSettingsForm
+from forms import SignupForm
+from models import Show
+from models import ShowHost
+from models import ShowInstance
+from models import ShowInstanceHost
+from models import ShowRunner
+from models import Signup
+from models import User
 
 
 def is_safe_url(target):
@@ -146,7 +170,7 @@ def comedian_dashboard():
         .order_by(ShowInstance.instance_date)
         .all()
     )
-    
+
     signup_instance_ids = [signup.show_instance_id for signup in upcoming_signups]
 
     return render_template(
@@ -191,24 +215,27 @@ def host_dashboard():
 def upcoming_lineups(show_id):
     """View upcoming lineups for a specific show"""
     show = Show.query.get_or_404(show_id)
-    
+
     # Check if user can manage this show
     if not current_user.can_manage_lineup(show):
         flash("You don't have permission to manage this show.", "error")
-        return redirect(url_for('host_dashboard'))
-    
+        return redirect(url_for("host_dashboard"))
+
     # Get upcoming instances (next 10 instances)
-    from datetime import date, timedelta
-    upcoming_instances = (ShowInstance.query
-                         .filter(ShowInstance.show_id == show_id)
-                         .filter(ShowInstance.instance_date >= date.today())
-                         .order_by(ShowInstance.instance_date.asc())
-                         .limit(10)
-                         .all())
-    
-    return render_template("host/upcoming_lineups.html", 
-                         show=show, 
-                         upcoming_instances=upcoming_instances)
+    from datetime import date
+    from datetime import timedelta
+
+    upcoming_instances = (
+        ShowInstance.query.filter(ShowInstance.show_id == show_id)
+        .filter(ShowInstance.instance_date >= date.today())
+        .order_by(ShowInstance.instance_date.asc())
+        .limit(10)
+        .all()
+    )
+
+    return render_template(
+        "host/upcoming_lineups.html", show=show, upcoming_instances=upcoming_instances
+    )
 
 
 @app.route("/cancel_show_instance/<int:instance_id>", methods=["POST"])
@@ -216,16 +243,16 @@ def upcoming_lineups(show_id):
 def cancel_show_instance(instance_id):
     """Cancel a specific show instance"""
     instance = ShowInstance.query.get_or_404(instance_id)
-    
+
     # Check permissions
     if not current_user.can_manage_lineup(instance.show):
-        return jsonify({'success': False, 'error': 'Permission denied'}), 403
-    
-    reason = request.json.get('reason', '') if request.is_json else ''
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
+    reason = request.json.get("reason", "") if request.is_json else ""
     instance.cancel(reason)
     db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Show cancelled successfully'})
+
+    return jsonify({"success": True, "message": "Show cancelled successfully"})
 
 
 @app.route("/restore_show_instance/<int:instance_id>", methods=["POST"])
@@ -233,15 +260,15 @@ def cancel_show_instance(instance_id):
 def restore_show_instance(instance_id):
     """Restore a cancelled show instance"""
     instance = ShowInstance.query.get_or_404(instance_id)
-    
+
     # Check permissions
     if not current_user.can_manage_lineup(instance.show):
-        return jsonify({'success': False, 'error': 'Permission denied'}), 403
-    
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
     instance.uncancel()
     db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Show restored successfully'})
+
+    return jsonify({"success": True, "message": "Show restored successfully"})
 
 
 @app.route("/api/show/<int:show_id>", methods=["GET"])
@@ -249,25 +276,27 @@ def restore_show_instance(instance_id):
 def get_show_data(show_id):
     """Get show data for editing"""
     show = Show.query.get_or_404(show_id)
-    
+
     # Check permissions
     if not current_user.can_edit_show(show):
-        return jsonify({'success': False, 'error': 'Permission denied'}), 403
-    
-    return jsonify({
-        'id': show.id,
-        'name': show.name,
-        'venue': show.venue,
-        'address': show.address,
-        'day_of_week': show.day_of_week,
-        'start_time': show.start_time.strftime('%H:%M') if show.start_time else '',
-        'end_time': show.end_time.strftime('%H:%M') if show.end_time else '',
-        'description': show.description or '',
-        'max_signups': show.max_signups,
-        'signup_deadline_hours': show.signup_window_after_hours,
-        'show_host_info': show.show_host_info,
-        'show_owner_info': show.show_owner_info
-    })
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
+    return jsonify(
+        {
+            "id": show.id,
+            "name": show.name,
+            "venue": show.venue,
+            "address": show.address,
+            "day_of_week": show.day_of_week,
+            "start_time": show.start_time.strftime("%H:%M") if show.start_time else "",
+            "end_time": show.end_time.strftime("%H:%M") if show.end_time else "",
+            "description": show.description or "",
+            "max_signups": show.max_signups,
+            "signup_deadline_hours": show.signup_window_after_hours,
+            "show_host_info": show.show_host_info,
+            "show_owner_info": show.show_owner_info,
+        }
+    )
 
 
 @app.route("/api/show", methods=["POST"])
@@ -275,58 +304,75 @@ def get_show_data(show_id):
 def create_show_api():
     """Create a new show via API"""
     data = request.get_json()
-    
+
     # Validate required fields
-    required_fields = ['name', 'venue', 'address', 'day_of_week', 'start_time', 'max_signups', 'signup_deadline_hours']
+    required_fields = [
+        "name",
+        "venue",
+        "address",
+        "day_of_week",
+        "start_time",
+        "max_signups",
+        "signup_deadline_hours",
+    ]
     for field in required_fields:
         if not data.get(field):
-            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
-    
+            return (
+                jsonify(
+                    {"success": False, "error": f"Missing required field: {field}"}
+                ),
+                400,
+            )
+
     try:
         # Create new show
         show = Show(
-            name=data['name'],
-            venue=data['venue'],
-            address=data['address'],
-            description=data.get('description', ''),
-            day_of_week=data['day_of_week'],
-            start_time=datetime.strptime(data['start_time'], '%H:%M').time(),
-            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
-            max_signups=data['max_signups'],
-            signup_window_after_hours=data['signup_deadline_hours'],
+            name=data["name"],
+            venue=data["venue"],
+            address=data["address"],
+            description=data.get("description", ""),
+            day_of_week=data["day_of_week"],
+            start_time=datetime.strptime(data["start_time"], "%H:%M").time(),
+            end_time=(
+                datetime.strptime(data["end_time"], "%H:%M").time()
+                if data.get("end_time")
+                else None
+            ),
+            max_signups=data["max_signups"],
+            signup_window_after_hours=data["signup_deadline_hours"],
             owner_id=current_user.id,
             default_host_id=current_user.id,
-            show_host_info=data.get('show_host_info', True),
-            show_owner_info=data.get('show_owner_info', False),
+            show_host_info=data.get("show_host_info", True),
+            show_owner_info=data.get("show_owner_info", False),
         )
         db.session.add(show)
         db.session.flush()  # Get the show ID
-        
+
         # Create show instances for the next 3 months
         from datetime import timedelta
+
         start_date = show.get_next_instance_date()
         end_date = start_date + timedelta(days=90)
-        
+
         current_date = start_date
         while current_date <= end_date:
-            instance = ShowInstance(
-                show_id=show.id,
-                instance_date=current_date
-            )
+            instance = ShowInstance(show_id=show.id, instance_date=current_date)
             db.session.add(instance)
             current_date = show.get_next_instance_date(current_date)
-        
+
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully created {show.name}!',
-            'show_id': show.id
-        })
-        
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully created {show.name}!",
+                "show_id": show.id,
+            }
+        )
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/show/<int:show_id>", methods=["PUT"])
@@ -334,50 +380,56 @@ def create_show_api():
 def update_show_api(show_id):
     """Update an existing show via API"""
     show = Show.query.get_or_404(show_id)
-    
+
     # Check permissions
     if not current_user.can_edit_show(show):
-        return jsonify({'success': False, 'error': 'Permission denied'}), 403
-    
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
     data = request.get_json()
-    
+
     try:
         # Update show fields
-        if 'name' in data:
-            show.name = data['name']
-        if 'venue' in data:
-            show.venue = data['venue']
-        if 'address' in data:
-            show.address = data['address']
-        if 'description' in data:
-            show.description = data['description']
-        if 'day_of_week' in data:
-            show.day_of_week = data['day_of_week']
-        if 'start_time' in data:
-            show.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-        if 'end_time' in data:
-            show.end_time = datetime.strptime(data['end_time'], '%H:%M').time() if data['end_time'] else None
-        if 'max_signups' in data:
-            show.max_signups = data['max_signups']
-        if 'signup_deadline_hours' in data:
-            show.signup_window_after_hours = data['signup_deadline_hours']
-        if 'show_host_info' in data:
-            show.show_host_info = data['show_host_info']
-        if 'show_owner_info' in data:
-            show.show_owner_info = data['show_owner_info']
-        
+        if "name" in data:
+            show.name = data["name"]
+        if "venue" in data:
+            show.venue = data["venue"]
+        if "address" in data:
+            show.address = data["address"]
+        if "description" in data:
+            show.description = data["description"]
+        if "day_of_week" in data:
+            show.day_of_week = data["day_of_week"]
+        if "start_time" in data:
+            show.start_time = datetime.strptime(data["start_time"], "%H:%M").time()
+        if "end_time" in data:
+            show.end_time = (
+                datetime.strptime(data["end_time"], "%H:%M").time()
+                if data["end_time"]
+                else None
+            )
+        if "max_signups" in data:
+            show.max_signups = data["max_signups"]
+        if "signup_deadline_hours" in data:
+            show.signup_window_after_hours = data["signup_deadline_hours"]
+        if "show_host_info" in data:
+            show.show_host_info = data["show_host_info"]
+        if "show_owner_info" in data:
+            show.show_owner_info = data["show_owner_info"]
+
         show.updated_at = datetime.utcnow()
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully updated {show.name}!',
-            'show_id': show.id
-        })
-        
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully updated {show.name}!",
+                "show_id": show.id,
+            }
+        )
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/host/create-event", methods=["GET", "POST"])
@@ -569,7 +621,7 @@ def calendar_view():
         # Determine color based on user's relationship to event
         background_color = "#6c757d"  # Default dull gray
         color_class = "default-event"
-        
+
         if current_user.is_authenticated:
             # Check if user owns the event
             if instance.show.owner_id == current_user.id:
@@ -578,21 +630,20 @@ def calendar_view():
             else:
                 # Check if user has signed up for this event
                 user_signup = Signup.query.filter_by(
-                    comedian_id=current_user.id,
-                    show_instance_id=instance.id
+                    comedian_id=current_user.id, show_instance_id=instance.id
                 ).first()
-                
+
                 if user_signup:
                     background_color = "#28a745"  # Green for signed up events
                     color_class = "signed-up-event"
 
         events_by_date[instance_date].append(
             {
-                "event": instance, 
-                "date": instance_date, 
+                "event": instance,
+                "date": instance_date,
                 "signup_count": signup_count,
                 "background_color": background_color,
-                "color_class": color_class
+                "color_class": color_class,
             }
         )
 
@@ -639,7 +690,7 @@ def calendar_events_api():
             # Determine color based on user's relationship to event
             background_color = "#6c757d"  # Default dull blue/gray
             border_color = "#6c757d"
-            
+
             if current_user.is_authenticated:
                 # Check if user owns the event
                 if instance.show.owner_id == current_user.id:
@@ -648,14 +699,13 @@ def calendar_events_api():
                 else:
                     # Check if user has signed up for this event
                     user_signup = Signup.query.filter_by(
-                        comedian_id=current_user.id,
-                        show_instance_id=instance.id
+                        comedian_id=current_user.id, show_instance_id=instance.id
                     ).first()
-                    
+
                     if user_signup:
                         background_color = "#28a745"  # Green for signed up events
                         border_color = "#28a745"
-            
+
             events.append(
                 {
                     "id": instance.id,
@@ -696,7 +746,13 @@ def live_lineup(event_id):
     )
 
     from datetime import datetime
-    return render_template("public/live_lineup.html", event=instance, signups=signups, current_time=datetime.now())
+
+    return render_template(
+        "public/live_lineup.html",
+        event=instance,
+        signups=signups,
+        current_time=datetime.now(),
+    )
 
 
 @app.route("/signup/<int:event_id>", methods=["GET", "POST"])
@@ -704,95 +760,100 @@ def live_lineup(event_id):
 def signup_for_event(event_id):
     """Allow comedians and hosts to sign up for show instances"""
     instance = ShowInstance.query.get_or_404(event_id)
-    
+
     # Check if show instance is cancelled
     if instance.is_cancelled:
         flash("This show is cancelled.", "error")
         referrer = request.referrer
-        if referrer and 'calendar' in referrer:
+        if referrer and "calendar" in referrer:
             return redirect(url_for("calendar_view"))
-        elif referrer and 'comedian' in referrer:
+        elif referrer and "comedian" in referrer:
             return redirect(url_for("comedian_dashboard"))
         else:
             return redirect(url_for("comedian_dashboard"))
-    
+
     # Check if user is already signed up
     existing_signup = Signup.query.filter_by(
-        comedian_id=current_user.id,
-        show_instance_id=instance.id
+        comedian_id=current_user.id, show_instance_id=instance.id
     ).first()
-    
+
     if existing_signup:
         flash("You are already signed up for this show.", "warning")
         referrer = request.referrer
-        if referrer and 'calendar' in referrer:
+        if referrer and "calendar" in referrer:
             return redirect(url_for("calendar_view"))
-        elif referrer and 'comedian' in referrer:
+        elif referrer and "comedian" in referrer:
             return redirect(url_for("comedian_dashboard"))
         else:
             return redirect(url_for("comedian_dashboard"))
-    
+
     form = SignupForm()
-    
+
     if form.validate_on_submit():
         # Check if signups are still open
-        from datetime import datetime, timedelta
+        from datetime import datetime
+        from datetime import timedelta
+
         show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-        signup_deadline = show_datetime - timedelta(hours=instance.show.signup_window_after_hours)
-        
+        signup_deadline = show_datetime - timedelta(
+            hours=instance.show.signup_window_after_hours
+        )
+
         if datetime.now() > signup_deadline:
             flash("Signup deadline has passed for this show.", "error")
             referrer = request.referrer
-            if referrer and 'calendar' in referrer:
+            if referrer and "calendar" in referrer:
                 return redirect(url_for("calendar_view"))
-            elif referrer and 'comedian' in referrer:
+            elif referrer and "comedian" in referrer:
                 return redirect(url_for("comedian_dashboard"))
             else:
                 return redirect(url_for("comedian_dashboard"))
-        
+
         # Check if show is full
         current_signups = Signup.query.filter_by(show_instance_id=instance.id).count()
         if current_signups >= instance.max_signups:
             flash("This show is full.", "error")
             referrer = request.referrer
-            if referrer and 'calendar' in referrer:
+            if referrer and "calendar" in referrer:
                 return redirect(url_for("calendar_view"))
-            elif referrer and 'comedian' in referrer:
+            elif referrer and "comedian" in referrer:
                 return redirect(url_for("comedian_dashboard"))
             else:
                 return redirect(url_for("comedian_dashboard"))
-        
+
         # Create signup
         signup = Signup(
             comedian_id=current_user.id,
             show_instance_id=instance.id,
-            notes=form.notes.data
+            notes=form.notes.data,
         )
         db.session.add(signup)
         db.session.commit()
-        
+
         flash(f"Successfully signed up for {instance.show.name}!", "success")
-        
+
         # Redirect based on referrer
         referrer = request.referrer
-        if referrer and 'calendar' in referrer:
+        if referrer and "calendar" in referrer:
             return redirect(url_for("calendar_view"))
-        elif referrer and 'comedian' in referrer:
+        elif referrer and "comedian" in referrer:
             return redirect(url_for("comedian_dashboard"))
         else:
             return redirect(url_for("comedian_dashboard"))
-    
+
     # Handle AJAX requests for modal
-    if request.headers.get('Content-Type') == 'application/json':
-        return jsonify({
-            'event_name': instance.show.name,
-            'event_date': instance.instance_date.strftime('%A, %B %d, %Y'),
-            'event_time': instance.start_time.strftime('%I:%M %p'),
-            'venue': instance.show.venue,
-            'signups': Signup.query.filter_by(show_instance_id=instance.id).count(),
-            'max_signups': instance.max_signups
-        })
-    
+    if request.headers.get("Content-Type") == "application/json":
+        return jsonify(
+            {
+                "event_name": instance.show.name,
+                "event_date": instance.instance_date.strftime("%A, %B %d, %Y"),
+                "event_time": instance.start_time.strftime("%I:%M %p"),
+                "venue": instance.show.venue,
+                "signups": Signup.query.filter_by(show_instance_id=instance.id).count(),
+                "max_signups": instance.max_signups,
+            }
+        )
+
     return render_template("comedian/signup.html", form=form, event=instance)
 
 
@@ -801,50 +862,63 @@ def signup_for_event(event_id):
 def api_signup_for_event(event_id):
     """AJAX endpoint for signing up for events"""
     instance = ShowInstance.query.get_or_404(event_id)
-    
+
     # Check if show instance is cancelled
     if instance.is_cancelled:
-        return jsonify({'success': False, 'error': 'This show is cancelled.'}), 400
-    
+        return jsonify({"success": False, "error": "This show is cancelled."}), 400
+
     # Check if user is already signed up
     existing_signup = Signup.query.filter_by(
-        comedian_id=current_user.id,
-        show_instance_id=instance.id
+        comedian_id=current_user.id, show_instance_id=instance.id
     ).first()
-    
+
     if existing_signup:
-        return jsonify({'success': False, 'error': 'You are already signed up for this show.'}), 400
-    
+        return (
+            jsonify(
+                {"success": False, "error": "You are already signed up for this show."}
+            ),
+            400,
+        )
+
     # Check if signups are still open
-    from datetime import datetime, timedelta
+    from datetime import datetime
+    from datetime import timedelta
+
     show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-    signup_deadline = show_datetime - timedelta(hours=instance.show.signup_window_after_hours)
-    
+    signup_deadline = show_datetime - timedelta(
+        hours=instance.show.signup_window_after_hours
+    )
+
     if datetime.now() > signup_deadline:
-        return jsonify({'success': False, 'error': 'Signup deadline has passed for this show.'}), 400
-    
+        return (
+            jsonify(
+                {"success": False, "error": "Signup deadline has passed for this show."}
+            ),
+            400,
+        )
+
     # Check if show is full
     current_signups = Signup.query.filter_by(show_instance_id=instance.id).count()
     if current_signups >= instance.max_signups:
-        return jsonify({'success': False, 'error': 'This show is full.'}), 400
-    
+        return jsonify({"success": False, "error": "This show is full."}), 400
+
     # Get notes from request
-    notes = request.json.get('notes', '') if request.is_json else ''
-    
+    notes = request.json.get("notes", "") if request.is_json else ""
+
     # Create signup
     signup = Signup(
-        comedian_id=current_user.id,
-        show_instance_id=instance.id,
-        notes=notes
+        comedian_id=current_user.id, show_instance_id=instance.id, notes=notes
     )
     db.session.add(signup)
     db.session.commit()
-    
-    return jsonify({
-        'success': True, 
-        'message': f'Successfully signed up for {instance.show.name}!',
-        'signup_count': current_signups + 1
-    })
+
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Successfully signed up for {instance.show.name}!",
+            "signup_count": current_signups + 1,
+        }
+    )
 
 
 @app.route("/cancel_signup/<int:signup_id>", methods=["POST"])
@@ -852,21 +926,23 @@ def api_signup_for_event(event_id):
 def cancel_signup(signup_id):
     """Allow comedians to cancel their own signups or hosts to remove signups"""
     signup = Signup.query.get_or_404(signup_id)
-    
+
     # Check if user owns this signup or can manage the show
-    can_cancel = (signup.comedian_id == current_user.id or 
-                  current_user.can_manage_lineup(signup.show_instance.show))
-    
+    can_cancel = (
+        signup.comedian_id == current_user.id
+        or current_user.can_manage_lineup(signup.show_instance.show)
+    )
+
     if not can_cancel:
         flash("You can only cancel your own signups.", "error")
         return redirect(url_for("dashboard"))
-    
+
     show_name = signup.show_instance.show.name
     comedian_name = signup.comedian.full_name if signup.comedian else "Guest"
-    
+
     db.session.delete(signup)
     db.session.commit()
-    
+
     if signup.comedian_id == current_user.id:
         flash(f"Cancelled your signup for {show_name}.", "success")
         return redirect(url_for("comedian_dashboard"))
@@ -880,19 +956,19 @@ def cancel_signup(signup_id):
 def manage_lineup(event_id):
     """Allow hosts to manage show lineup and manually add comedians"""
     instance = ShowInstance.query.get_or_404(event_id)
-    
+
     # Check if user can manage this show
     if not current_user.can_manage_lineup(instance.show):
         flash("You don't have permission to manage this show's lineup.", "error")
         return redirect(url_for("dashboard"))
-    
+
     # Get signups ordered by position then signup time
     signups = (
         Signup.query.filter_by(show_instance_id=instance.id)
         .order_by(Signup.position.asc().nullslast(), Signup.signup_time)
         .all()
     )
-    
+
     # Handle position updates
     if request.method == "POST":
         if "update_positions" in request.form:
@@ -902,11 +978,11 @@ def manage_lineup(event_id):
                 if position_key in request.form:
                     new_position = request.form[position_key]
                     signup.position = int(new_position) if new_position else None
-            
+
             db.session.commit()
             flash("Lineup positions updated.", "success")
             return redirect(url_for("manage_lineup", event_id=event_id))
-        
+
         elif "add_comedian" in request.form:
             # Add comedian manually
             comedian_name = request.form.get("comedian_name", "").strip()
@@ -918,7 +994,7 @@ def manage_lineup(event_id):
                     signup = Signup(
                         comedian_id=None,  # No user account
                         show_instance_id=instance.id,
-                        notes=f"Host added: {comedian_name}"
+                        notes=f"Host added: {comedian_name}",
                     )
                     db.session.add(signup)
                     db.session.commit()
@@ -926,8 +1002,7 @@ def manage_lineup(event_id):
                 else:
                     # Check if already signed up
                     existing = Signup.query.filter_by(
-                        comedian_id=comedian.id,
-                        show_instance_id=instance.id
+                        comedian_id=comedian.id, show_instance_id=instance.id
                     ).first()
                     if existing:
                         flash(f"{comedian_name} is already signed up.", "warning")
@@ -935,14 +1010,14 @@ def manage_lineup(event_id):
                         signup = Signup(
                             comedian_id=comedian.id,
                             show_instance_id=instance.id,
-                            notes="Added by host"
+                            notes="Added by host",
                         )
                         db.session.add(signup)
                         db.session.commit()
                         flash(f"Added {comedian_name} to the lineup.", "success")
-            
+
             return redirect(url_for("manage_lineup", event_id=event_id))
-    
+
     return render_template("host/manage_lineup.html", event=instance, signups=signups)
 
 
@@ -951,24 +1026,24 @@ def manage_lineup(event_id):
 def reorder_lineup(event_id):
     """Handle drag-and-drop reordering of lineup positions"""
     instance = ShowInstance.query.get_or_404(event_id)
-    
+
     # Check if user can manage this show
     if not current_user.can_manage_lineup(instance.show):
         return jsonify({"success": False, "error": "Permission denied"}), 403
-    
+
     try:
         data = request.get_json()
         signup_ids = data.get("signup_ids", [])
-        
+
         # Update positions based on order
         for position, signup_id in enumerate(signup_ids, 1):
             signup = Signup.query.get(signup_id)
             if signup and signup.show_instance_id == instance.id:
                 signup.position = position
-        
+
         db.session.commit()
         return jsonify({"success": True})
-    
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
