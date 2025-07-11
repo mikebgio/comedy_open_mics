@@ -558,13 +558,22 @@ def update_show_api(show_id):
 def create_event():
     """Create a new recurring show"""
     form = EventForm()
+    
+    if request.method == "POST":
+        print(f"Form validation: {form.validate()}")
+        print(f"Form errors: {form.errors}")
+        for field_name, field in form._fields.items():
+            if hasattr(field, 'data'):
+                print(f"{field_name}: {field.data}")
+    
     if form.validate_on_submit():
-        # Convert signup timing to minutes
+        # Convert signup timing to minutes with safe defaults
         signups_open_minutes = Show.convert_time_to_minutes(
-            form.signups_open_value.data, form.signups_open_unit.data
+            form.signups_open_value.data or 2, form.signups_open_unit.data or "days"
         )
         signups_closed_minutes = Show.convert_time_to_minutes(
-            form.signups_closed_value.data, form.signups_closed_unit.data
+            form.signups_closed_value.data if form.signups_closed_value.data is not None else 0, 
+            form.signups_closed_unit.data or "minutes"
         )
         
         # Create new show
