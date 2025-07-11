@@ -421,11 +421,30 @@ def create_show_api():
         start_date = show.get_next_instance_date()
         end_date = start_date + timedelta(days=90)
 
+        # Create instances more efficiently with simple logic
+        instances = []
         current_date = start_date
-        while current_date <= end_date:
-            instance = ShowInstance(show_id=show.id, instance_date=current_date)
-            db.session.add(instance)
-            current_date = show.get_next_instance_date(current_date)
+        instance_count = 0
+        
+        while current_date <= end_date and instance_count < 20:  # Limit to 20 instances (~5 months)
+            instances.append(ShowInstance(show_id=show.id, instance_date=current_date))
+            
+            # Simple weekly increment for now to avoid complex date calculations
+            if show.repeat_cadence == "bi-weekly":
+                current_date += timedelta(days=14)
+            elif show.repeat_cadence == "monthly":
+                # Add roughly 4 weeks for monthly
+                current_date += timedelta(days=28)
+            elif show.repeat_cadence == "custom" and show.custom_repeat_days:
+                current_date += timedelta(days=show.custom_repeat_days)
+            else:
+                # Default weekly
+                current_date += timedelta(days=7)
+            
+            instance_count += 1
+        
+        # Add all instances at once
+        db.session.add_all(instances)
 
         db.session.commit()
 
