@@ -104,12 +104,14 @@ class Show(db.Model):
 
     # Show settings
     max_signups = db.Column(db.Integer, default=20)
+    signups_open = db.Column(db.Integer, default=2880)  # Minutes before show when signups open (default: 2 days)
+    signups_closed = db.Column(db.Integer, default=0)  # Minutes before show when signups close (default: at show start)
     signup_window_before_days = db.Column(
         db.Integer, default=14
-    )  # How early can comedians sign up
+    )  # How early can comedians sign up (DEPRECATED - use signups_open)
     signup_window_after_hours = db.Column(
         db.Integer, default=2
-    )  # How late can comedians sign up
+    )  # How late can comedians sign up (DEPRECATED - use signups_closed)
 
     # Ownership
     owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -150,6 +152,74 @@ class Show(db.Model):
         """Restore a deleted show"""
         self.is_deleted = False
         self.ended_date = None
+
+    def get_signup_open_datetime(self, instance_date):
+        """Calculate when signups open for a specific instance"""
+        from datetime import datetime, timedelta, timezone
+        from app import utc_to_local
+        
+        # Combine instance date with show start time in UTC
+        show_datetime_utc = datetime.combine(instance_date, self.start_time)
+        
+        # Convert to timezone-aware datetime (times are stored in UTC)
+        show_datetime_utc = show_datetime_utc.replace(tzinfo=timezone.utc)
+        
+        # Subtract signups_open minutes
+        signup_open_utc = show_datetime_utc - timedelta(minutes=self.signups_open)
+        
+        # Convert back to local timezone for display
+        return utc_to_local(signup_open_utc, self.timezone)
+    
+    def get_signup_closed_datetime(self, instance_date):
+        """Calculate when signups close for a specific instance"""
+        from datetime import datetime, timedelta, timezone
+        from app import utc_to_local
+        
+        # Combine instance date with show start time in UTC
+        show_datetime_utc = datetime.combine(instance_date, self.start_time)
+        
+        # Convert to timezone-aware datetime (times are stored in UTC)
+        show_datetime_utc = show_datetime_utc.replace(tzinfo=timezone.utc)
+        
+        # Subtract signups_closed minutes (can be negative for minutes into show)
+        signup_closed_utc = show_datetime_utc - timedelta(minutes=self.signups_closed)
+        
+        # Convert back to local timezone for display
+        return utc_to_local(signup_closed_utc, self.timezone)
+    
+    @staticmethod
+    def convert_time_to_minutes(value, unit):
+        """Convert time value with unit to minutes"""
+        if unit == "minutes":
+            return value
+        elif unit == "hours":
+            return value * 60
+        elif unit == "days":
+            return value * 60 * 24
+        elif unit == "weeks":
+            return value * 60 * 24 * 7
+        elif unit == "months":
+            return value * 60 * 24 * 30  # Approximate 30 days per month
+        else:
+            return value
+    
+    @staticmethod
+    def convert_minutes_to_time_unit(minutes, preferred_unit="days"):
+        """Convert minutes back to most appropriate time unit for display"""
+        if minutes == 0:
+            return 0, "minutes"
+        
+        # Try to find the largest unit that divides evenly
+        if minutes % (30 * 24 * 60) == 0:
+            return minutes // (30 * 24 * 60), "months"
+        elif minutes % (7 * 24 * 60) == 0:
+            return minutes // (7 * 24 * 60), "weeks"
+        elif minutes % (24 * 60) == 0:
+            return minutes // (24 * 60), "days"
+        elif minutes % 60 == 0:
+            return minutes // 60, "hours"
+        else:
+            return minutes, "minutes"
 
     def get_next_instance_date(self, from_date=None):
         """Calculate next show instance date based on repeat cadence"""

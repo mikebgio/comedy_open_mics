@@ -158,16 +158,46 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="eventMaxSignups" class="form-label">Maximum Signups</label>
                                 <input type="number" class="form-control" id="eventMaxSignups" name="max_signups" min="1" max="50" value="20" required>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Signup Timing Section -->
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="eventSignupDeadline" class="form-label">Signup Deadline (hours before)</label>
-                                <input type="number" class="form-control" id="eventSignupDeadline" name="signup_deadline_hours" min="0" max="72" value="2" required>
+                                <label class="form-label">Signups Open</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="eventSignupsOpenValue" name="signups_open_value" min="0" max="525600" value="2" required>
+                                    <select class="form-select" id="eventSignupsOpenUnit" name="signups_open_unit" required>
+                                        <option value="minutes">Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days" selected>Days</option>
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                    </select>
+                                </div>
+                                <small class="form-text text-muted">How far in advance comedians can sign up</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Signups Close</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="eventSignupsClosedValue" name="signups_closed_value" min="-1440" max="525600" value="0" required>
+                                    <select class="form-select" id="eventSignupsClosedUnit" name="signups_closed_unit" required>
+                                        <option value="minutes" selected>Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                    </select>
+                                </div>
+                                <small class="form-text text-muted">When signups close (negative = minutes into show)</small>
                             </div>
                         </div>
                     </div>
@@ -250,7 +280,22 @@ function populateEventForm(data) {
     document.getElementById('eventEndTime').value = data.end_time || '';
     document.getElementById('eventDescription').value = data.description || '';
     document.getElementById('eventMaxSignups').value = data.max_signups || 20;
-    document.getElementById('eventSignupDeadline').value = data.signup_deadline_hours || 2;
+    
+    // Handle signup timing fields
+    if (data.signups_open !== undefined) {
+        const openValue = data.signups_open_value || 2;
+        const openUnit = data.signups_open_unit || 'days';
+        document.getElementById('eventSignupsOpenValue').value = openValue;
+        document.getElementById('eventSignupsOpenUnit').value = openUnit;
+    }
+    
+    if (data.signups_closed !== undefined) {
+        const closedValue = data.signups_closed_value || 0;
+        const closedUnit = data.signups_closed_unit || 'minutes';
+        document.getElementById('eventSignupsClosedValue').value = closedValue;
+        document.getElementById('eventSignupsClosedUnit').value = closedUnit;
+    }
+    
     document.getElementById('eventShowHostInfo').checked = data.show_host_info !== false;
     document.getElementById('eventShowOwnerInfo').checked = data.show_owner_info === true;
 }
@@ -258,7 +303,13 @@ function populateEventForm(data) {
 function clearEventForm() {
     document.getElementById('eventForm').reset();
     document.getElementById('eventMaxSignups').value = 20;
-    document.getElementById('eventSignupDeadline').value = 2;
+    
+    // Set default signup timing values
+    document.getElementById('eventSignupsOpenValue').value = 2;
+    document.getElementById('eventSignupsOpenUnit').value = 'days';
+    document.getElementById('eventSignupsClosedValue').value = 0;
+    document.getElementById('eventSignupsClosedUnit').value = 'minutes';
+    
     document.getElementById('eventShowHostInfo').checked = true;
     document.getElementById('eventShowOwnerInfo').checked = false;
 }
@@ -321,7 +372,10 @@ function getFormData() {
         end_time: document.getElementById('eventEndTime').value,
         description: document.getElementById('eventDescription').value,
         max_signups: parseInt(document.getElementById('eventMaxSignups').value),
-        signup_deadline_hours: parseInt(document.getElementById('eventSignupDeadline').value),
+        signups_open_value: parseInt(document.getElementById('eventSignupsOpenValue').value),
+        signups_open_unit: document.getElementById('eventSignupsOpenUnit').value,
+        signups_closed_value: parseInt(document.getElementById('eventSignupsClosedValue').value),
+        signups_closed_unit: document.getElementById('eventSignupsClosedUnit').value,
         show_host_info: document.getElementById('eventShowHostInfo').checked,
         show_owner_info: document.getElementById('eventShowOwnerInfo').checked
     };

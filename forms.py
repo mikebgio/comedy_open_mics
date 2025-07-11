@@ -99,6 +99,41 @@ class EventForm(FlaskForm):
     max_signups = IntegerField(
         "Maximum Signups", validators=[DataRequired(), NumberRange(min=1, max=50)]
     )
+    
+    # New signup timing fields
+    signups_open_value = IntegerField(
+        "Signups Open", validators=[DataRequired(), NumberRange(min=0, max=525600)]
+    )
+    signups_open_unit = SelectField(
+        "Unit",
+        choices=[
+            ("minutes", "Minutes"),
+            ("hours", "Hours"),
+            ("days", "Days"),
+            ("weeks", "Weeks"),
+            ("months", "Months"),
+        ],
+        default="days",
+        validators=[DataRequired()],
+    )
+    
+    signups_closed_value = IntegerField(
+        "Signups Close", validators=[DataRequired(), NumberRange(min=-1440, max=525600)]
+    )
+    signups_closed_unit = SelectField(
+        "Unit",
+        choices=[
+            ("minutes", "Minutes"),
+            ("hours", "Hours"),
+            ("days", "Days"),
+            ("weeks", "Weeks"),
+            ("months", "Months"),
+        ],
+        default="hours",
+        validators=[DataRequired()],
+    )
+    
+    # Deprecated field - keeping for backward compatibility
     signup_deadline_hours = IntegerField(
         "Signup Deadline (hours before)",
         validators=[DataRequired(), NumberRange(min=0, max=72)],

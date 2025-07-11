@@ -335,18 +335,27 @@ def get_show_data(show_id):
     if not current_user.can_edit_show(show):
         return jsonify({"success": False, "error": "Permission denied"}), 403
 
+    # Convert signup timing back to display format
+    signups_open_value, signups_open_unit = Show.convert_minutes_to_time_unit(show.signups_open)
+    signups_closed_value, signups_closed_unit = Show.convert_minutes_to_time_unit(show.signups_closed)
+    
     return jsonify(
         {
             "id": show.id,
             "name": show.name,
             "venue": show.venue,
             "address": show.address,
+            "timezone": show.timezone,
             "day_of_week": show.day_of_week,
             "start_time": show.start_time.strftime("%H:%M") if show.start_time else "",
             "end_time": show.end_time.strftime("%H:%M") if show.end_time else "",
             "description": show.description or "",
             "max_signups": show.max_signups,
-            "signup_deadline_hours": show.signup_window_after_hours,
+            "signups_open_value": signups_open_value,
+            "signups_open_unit": signups_open_unit,
+            "signups_closed_value": signups_closed_value,
+            "signups_closed_unit": signups_closed_unit,
+            "signup_deadline_hours": show.signup_window_after_hours,  # Keep for compatibility
             "show_host_info": show.show_host_info,
             "show_owner_info": show.show_owner_info,
         }
@@ -396,6 +405,16 @@ def create_show_api():
             end_dt = datetime.strptime(f"2000-01-01 {end_time_str}", "%Y-%m-%d %H:%M")
             end_time_utc = local_to_utc(end_dt, event_timezone).time()
         
+        # Convert signup timing to minutes
+        signups_open_minutes = Show.convert_time_to_minutes(
+            data.get("signups_open_value", 2), 
+            data.get("signups_open_unit", "days")
+        )
+        signups_closed_minutes = Show.convert_time_to_minutes(
+            data.get("signups_closed_value", 0), 
+            data.get("signups_closed_unit", "minutes")
+        )
+        
         show = Show(
             name=data["name"],
             venue=data["venue"],
@@ -406,7 +425,9 @@ def create_show_api():
             start_time=start_time_utc,
             end_time=end_time_utc,
             max_signups=data["max_signups"],
-            signup_window_after_hours=data["signup_deadline_hours"],
+            signups_open=signups_open_minutes,
+            signups_closed=signups_closed_minutes,
+            signup_window_after_hours=data.get("signup_deadline_hours", 2),  # Keep for backward compatibility
             owner_id=current_user.id,
             default_host_id=current_user.id,
             show_host_info=data.get("show_host_info", True),
@@ -497,6 +518,19 @@ def update_show_api(show_id):
             show.max_signups = data["max_signups"]
         if "signup_deadline_hours" in data:
             show.signup_window_after_hours = data["signup_deadline_hours"]
+        
+        # Handle new signup timing fields
+        if "signups_open_value" in data and "signups_open_unit" in data:
+            show.signups_open = Show.convert_time_to_minutes(
+                data["signups_open_value"], 
+                data["signups_open_unit"]
+            )
+        if "signups_closed_value" in data and "signups_closed_unit" in data:
+            show.signups_closed = Show.convert_time_to_minutes(
+                data["signups_closed_value"], 
+                data["signups_closed_unit"]
+            )
+        
         if "show_host_info" in data:
             show.show_host_info = data["show_host_info"]
         if "show_owner_info" in data:
