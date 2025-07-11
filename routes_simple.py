@@ -455,7 +455,8 @@ def live_lineup(event_id):
         .all()
     )
 
-    return render_template("public/live_lineup.html", event=instance, signups=signups)
+    from datetime import datetime
+    return render_template("public/live_lineup.html", event=instance, signups=signups, current_time=datetime.now())
 
 
 @app.route("/signup/<int:event_id>", methods=["GET", "POST"])

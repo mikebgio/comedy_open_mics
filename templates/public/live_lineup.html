@@ -99,7 +99,7 @@
                             <i class="fas fa-user-times fa-3x mb-3"></i>
                             <h5>No comedians signed up yet</h5>
                             <p>Check back later or be the first to sign up!</p>
-                            {% if current_user.is_authenticated and current_user.role == 'comedian' %}
+                            {% if current_user.is_authenticated %}
                                 <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-primary">
                                     <i class="fas fa-plus me-2"></i>Sign Up Now
                                 </a>
@@ -114,12 +114,15 @@
                     <a href="{{ url_for('event_info', event_id=event.id) }}" class="btn btn-outline-info btn-sm">
                         <i class="fas fa-info-circle me-1"></i>Event Info
                     </a>
-                    {% if current_user.is_authenticated and current_user.role == 'comedian' and not is_cancelled %}
-                        <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-plus me-1"></i>Sign Up
-                        </a>
+                    {% if current_user.is_authenticated and not event.is_cancelled %}
+                        {% set user_signup = signups|selectattr('comedian_id', 'equalto', current_user.id)|first %}
+                        {% if not user_signup %}
+                            <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-plus me-1"></i>Sign Up
+                            </a>
+                        {% endif %}
                     {% endif %}
-                    {% if current_user.is_authenticated and current_user.role == 'host' and current_user.id == event.host_id %}
+                    {% if current_user.is_authenticated and current_user.can_manage_lineup(event.show) %}
                         <a href="{{ url_for('manage_lineup', event_id=event.id) }}" class="btn btn-outline-warning btn-sm">
                             <i class="fas fa-edit me-1"></i>Manage
                         </a>
