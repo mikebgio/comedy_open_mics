@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Live Lineup - {{ event.name }} - Comedy Open Mic Manager{% endblock %}
+{% block title %}Live Lineup - {{ event.show.name }} - Comedy Open Mic Manager{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -8,7 +8,7 @@
         <div class="card">
             <div class="card-header text-center">
                 <h3 class="mb-1">
-                    <i class="fas fa-microphone me-2"></i>{{ event.name }}
+                    <i class="fas fa-microphone me-2"></i>{{ event.show.name }}
                 </h3>
                 <p class="mb-0 text-muted">{{ event.instance_date.strftime('%A, %B %d, %Y') }}</p>
             </div>
@@ -28,13 +28,13 @@
                     <div class="row mb-3">
                         <div class="col-md-6 text-center">
                             <h6 class="text-primary">
-                                <i class="fas fa-map-marker-alt me-1"></i>{{ event.venue }}
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ event.show.venue }}
                             </h6>
-                            <p class="text-muted mb-0">{{ event.address }}</p>
+                            <p class="text-muted mb-0">{{ event.show.address }}</p>
                         </div>
                         <div class="col-md-6 text-center">
                             <h6 class="text-info">
-                                <i class="fas fa-clock me-1"></i>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                                <i class="fas fa-clock me-1"></i>{{ event.start_time.strftime('%I:%M %p') }}{% if event.end_time %} - {{ event.end_time.strftime('%I:%M %p') }}{% endif %}
                             </h6>
                             <p class="text-muted mb-0">{{ signups|length }} comedians signed up</p>
                         </div>
@@ -58,7 +58,13 @@
                                                 {% endif %}
                                             </div>
                                             <div>
-                                                <h6 class="mb-1 fw-bold">{{ signup.comedian.full_name }}</h6>
+                                                <h6 class="mb-1 fw-bold">
+                                                    {% if signup.comedian %}
+                                                        {{ signup.comedian.full_name }}
+                                                    {% else %}
+                                                        Guest Comedian
+                                                    {% endif %}
+                                                </h6>
                                                 {% if signup.notes %}
                                                     <small class="text-muted">{{ signup.notes }}</small>
                                                 {% endif %}

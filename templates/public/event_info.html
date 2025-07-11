@@ -33,10 +33,26 @@
                             <i class="fas fa-clock text-info me-2"></i>
                             {{ event.start_time.strftime('%I:%M %p') }}{% if event.end_time %} - {{ event.end_time.strftime('%I:%M %p') }}{% endif %}
                         </p>
-                        <p class="mb-0">
+                        <p class="mb-2">
                             <i class="fas fa-users text-success me-2"></i>
-                            Up to {{ event.max_signups }} comedians per show
+                            {{ signups|length }} / {{ event.max_signups }} comedians signed up
                         </p>
+                        
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ (signups|length / event.max_signups * 100)|round }}%"
+                                 aria-valuenow="{{ signups|length }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="{{ event.max_signups }}">
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            {% if signups|length >= event.max_signups %}
+                                Show is full
+                            {% else %}
+                                {{ event.max_signups - signups|length }} spots remaining
+                            {% endif %}
+                        </small>
                     </div>
                     
                     <div class="col-md-6">
@@ -74,10 +90,23 @@
                     <a href="{{ url_for('live_lineup', event_id=event.id) }}" class="btn btn-primary">
                         <i class="fas fa-list me-2"></i>View Current Lineup
                     </a>
-                    {% if current_user.is_authenticated and current_user.role == 'comedian' %}
-                        <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-success">
-                            <i class="fas fa-plus me-2"></i>Sign Up for This Mic
-                        </a>
+                    {% if current_user.is_authenticated %}
+                        {% set user_signup = signups|selectattr('comedian_id', 'equalto', current_user.id)|first %}
+                        {% if user_signup %}
+                            <span class="badge bg-success fs-6 me-2">
+                                <i class="fas fa-check me-1"></i>You're signed up
+                            </span>
+                            <form method="POST" action="{{ url_for('cancel_signup', signup_id=user_signup.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                        onclick="return confirm('Cancel your signup for this show?')">
+                                    <i class="fas fa-times me-1"></i>Cancel Signup
+                                </button>
+                            </form>
+                        {% else %}
+                            <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Sign Up for This Mic
+                            </a>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
