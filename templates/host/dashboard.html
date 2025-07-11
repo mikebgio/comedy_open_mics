@@ -202,6 +202,9 @@
                         </div>
                     </div>
                     
+                    <!-- Hidden field for backward compatibility -->
+                    <input type="hidden" id="eventSignupDeadlineHours" name="signup_deadline_hours" value="2">
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3 form-check">
@@ -376,6 +379,7 @@ function getFormData() {
         signups_open_unit: document.getElementById('eventSignupsOpenUnit').value,
         signups_closed_value: parseInt(document.getElementById('eventSignupsClosedValue').value),
         signups_closed_unit: document.getElementById('eventSignupsClosedUnit').value,
+        signup_deadline_hours: parseInt(document.getElementById('eventSignupDeadlineHours').value) || 2,
         show_host_info: document.getElementById('eventShowHostInfo').checked,
         show_owner_info: document.getElementById('eventShowOwnerInfo').checked
     };
