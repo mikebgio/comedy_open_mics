@@ -111,7 +111,8 @@
                     
                     <div class="mb-3">
                         <label for="eventAddress" class="form-label">Address</label>
-                        <gmp-place-autocomplete id="eventAddress" name="address" required placeholder="Start typing an address..." style="width: 100%; height: 38px; padding: 0.375rem 0.75rem; border: 1px solid #495057; border-radius: 0.375rem; font-size: 1rem; line-height: 1.5; color: #fff; background-color: #343a40;"></gmp-place-autocomplete>
+                        <input type="text" class="form-control" id="eventAddress" name="address" required placeholder="Start typing an address..." style="background-color: #343a40; color: #fff; border-color: #495057;">
+                        <div id="addressAutocomplete" style="display: none;"></div>
                         <input type="hidden" id="eventTimezone" name="timezone" value="">
                         <small class="form-text text-muted">
                             <span id="addressHelp">Select from suggestions for accurate timezone detection</span>
@@ -306,10 +307,7 @@ function checkForChanges() {
 
 function getFormData() {
     const addressField = document.getElementById('eventAddress');
-    const selectedAddress = addressField.getAttribute('data-selected-address') || 
-                          addressField.value || 
-                          addressField.textContent || 
-                          '';
+    const selectedAddress = addressField.value.trim();
     
     console.log('Form address value:', selectedAddress);
     
@@ -374,7 +372,7 @@ let autocomplete;
 let selectedTimezone = '';
 
 function initializeGoogleMaps() {
-    console.log('Initializing Google Maps Place Autocomplete Element...');
+    console.log('Initializing Google Maps Autocomplete...');
     
     const addressField = document.getElementById('eventAddress');
     if (!addressField) {
@@ -382,21 +380,27 @@ function initializeGoogleMaps() {
         return;
     }
     
-    // Set up the new PlaceAutocompleteElement
-    addressField.addEventListener('gmp-placeselect', (event) => {
-        console.log('Place selected event fired');
-        const place = event.detail.place;
+    // Create the classic autocomplete (still supported)
+    autocomplete = new google.maps.places.Autocomplete(addressField, {
+        types: ['address'],
+        componentRestrictions: { country: ['us', 'ca'] }
+    });
+    
+    // Listen for place selection
+    autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        console.log('Place changed:', place);
         
         if (!place.geometry) {
             console.log("No details available for selected place");
             return;
         }
 
-        const selectedAddress = place.displayName || place.formattedAddress;
-        console.log('Selected place:', selectedAddress);
-
-        // Store the selected address in a data attribute for form submission
-        addressField.setAttribute('data-selected-address', selectedAddress);
+        const selectedAddress = place.formatted_address || place.name;
+        console.log('Selected address:', selectedAddress);
+        
+        // Set the address field value
+        addressField.value = selectedAddress;
 
         // Get timezone from coordinates
         getTimezoneFromCoordinates(
@@ -406,62 +410,38 @@ function initializeGoogleMaps() {
         );
     });
     
-    // Configure the autocomplete element
-    addressField.setAttribute('types', 'address');
-    addressField.setAttribute('component-restrictions', JSON.stringify({ country: ['us', 'ca'] }));
+    console.log('Autocomplete initialized successfully');
     
-    // Wait for the element to be fully loaded before applying additional styling
-    setTimeout(() => {
-        const inputElement = addressField.querySelector('input');
-        if (inputElement) {
-            inputElement.style.backgroundColor = '#343a40';
-            inputElement.style.color = '#fff';
-            inputElement.style.borderColor = '#495057';
-            
-            // Also listen for input changes to capture manual typing
-            inputElement.addEventListener('input', (e) => {
-                addressField.setAttribute('data-selected-address', e.target.value);
-            });
-        }
-    }, 100);
-    
-    console.log('Place Autocomplete Element initialized successfully');
-    
-    // Apply dark theme styling to the autocomplete element
+    // Apply dark theme styling
     const style = document.createElement('style');
     style.textContent = `
-        gmp-place-autocomplete {
-            --gmp-autocomplete-background-color: #343a40;
-            --gmp-autocomplete-color: #fff;
-            --gmp-autocomplete-border-color: #495057;
-            --gmp-autocomplete-hover-background-color: #495057;
-            --gmp-autocomplete-focus-background-color: #343a40;
-            --gmp-autocomplete-focus-border-color: #80bdff;
-            --gmp-autocomplete-focus-color: #fff;
-            --gmp-autocomplete-selected-background-color: #495057;
-            --gmp-autocomplete-selected-color: #fff;
-            --gmp-autocomplete-dropdown-background-color: #343a40;
-            --gmp-autocomplete-dropdown-color: #fff;
-            --gmp-autocomplete-dropdown-border-color: #495057;
-            --gmp-autocomplete-dropdown-item-hover-background-color: #495057;
-            --gmp-autocomplete-dropdown-item-hover-color: #fff;
+        .pac-container {
+            background-color: #343a40 !important;
+            border-color: #495057 !important;
         }
         
-        gmp-place-autocomplete input {
+        .pac-item {
             background-color: #343a40 !important;
             color: #fff !important;
             border-color: #495057 !important;
         }
         
-        gmp-place-autocomplete input::placeholder {
-            color: #adb5bd !important;
+        .pac-item:hover {
+            background-color: #495057 !important;
+            color: #fff !important;
         }
         
-        gmp-place-autocomplete input:focus {
-            background-color: #343a40 !important;
-            border-color: #80bdff !important;
+        .pac-item-selected {
+            background-color: #495057 !important;
             color: #fff !important;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+        }
+        
+        .pac-item-query {
+            color: #fff !important;
+        }
+        
+        .pac-matched {
+            color: #80bdff !important;
         }
     `;
     document.head.appendChild(style);
@@ -661,9 +641,8 @@ function setupFallbackAddressDetection() {
     // Set up fallback address detection
     const addressField = document.getElementById('eventAddress');
     addressField.addEventListener('blur', function() {
-        const address = this.getAttribute('data-selected-address') || this.value || this.textContent;
+        const address = this.value.trim();
         if (address) {
-            this.setAttribute('data-selected-address', address);
             fallbackTimezoneDetection(address);
         }
     });
