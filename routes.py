@@ -377,19 +377,30 @@ def create_show_api():
             )
 
     try:
-        # Create new show
+        # Create new show - times are assumed to be in Eastern Time
+        from app import local_to_utc
+        
+        # Parse times and convert to UTC for storage
+        start_time_str = data["start_time"]
+        end_time_str = data.get("end_time")
+        
+        # Convert time strings to datetime objects in ET, then to UTC
+        start_dt = datetime.strptime(f"2000-01-01 {start_time_str}", "%Y-%m-%d %H:%M")
+        start_time_utc = local_to_utc(start_dt, "America/New_York").time()
+        
+        end_time_utc = None
+        if end_time_str:
+            end_dt = datetime.strptime(f"2000-01-01 {end_time_str}", "%Y-%m-%d %H:%M")
+            end_time_utc = local_to_utc(end_dt, "America/New_York").time()
+        
         show = Show(
             name=data["name"],
             venue=data["venue"],
             address=data["address"],
             description=data.get("description", ""),
             day_of_week=data["day_of_week"],
-            start_time=datetime.strptime(data["start_time"], "%H:%M").time(),
-            end_time=(
-                datetime.strptime(data["end_time"], "%H:%M").time()
-                if data.get("end_time")
-                else None
-            ),
+            start_time=start_time_utc,
+            end_time=end_time_utc,
             max_signups=data["max_signups"],
             signup_window_after_hours=data["signup_deadline_hours"],
             owner_id=current_user.id,

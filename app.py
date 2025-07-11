@@ -1,5 +1,6 @@
 import logging
 import os
+import pytz
 from datetime import datetime
 
 from flask import Flask
@@ -58,6 +59,32 @@ with app.app_context():
 @app.context_processor
 def inject_current_year():
     return {"current_year": datetime.now().year}
+
+
+# Add timezone utility functions
+def get_user_timezone():
+    """Get user's timezone (default to EST for Boston comedy scene)"""
+    return pytz.timezone("America/New_York")
+
+
+def utc_to_local(utc_dt, timezone_str="America/New_York"):
+    """Convert UTC datetime to local timezone"""
+    if utc_dt is None:
+        return None
+    if utc_dt.tzinfo is None:
+        utc_dt = pytz.utc.localize(utc_dt)
+    local_tz = pytz.timezone(timezone_str)
+    return utc_dt.astimezone(local_tz)
+
+
+def local_to_utc(local_dt, timezone_str="America/New_York"):
+    """Convert local datetime to UTC"""
+    if local_dt is None:
+        return None
+    local_tz = pytz.timezone(timezone_str)
+    if local_dt.tzinfo is None:
+        local_dt = local_tz.localize(local_dt)
+    return local_dt.astimezone(pytz.utc)
 
 
 # Import routes to register them with the app
