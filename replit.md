@@ -109,6 +109,16 @@ The application uses a sophisticated data model with the following key entities:
 
 ## Recent Changes (July 2025)
 
+### Timezone and Address Management Enhancement
+- Implemented intelligent timezone detection based on event addresses
+- Added address autocomplete with location-based timezone mapping for US/Canada
+- Enhanced event creation to store times in UTC while displaying in local timezone
+- Added comprehensive timezone support for all North American time zones
+- Fixed database constraints to allow guest performers (null comedian_id)
+- Improved form validation with real-time timezone feedback
+
+## Previous Changes (July 2025)
+
 ### Host Dashboard Overhaul
 - Implemented modal-based event creation and editing
 - Added change tracking with visual indicators (yellow highlighting)

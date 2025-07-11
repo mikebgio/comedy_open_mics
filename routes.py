@@ -238,6 +238,7 @@ def comedian_dashboard():
 @login_required
 def host_dashboard():
     """Host-specific dashboard for managing shows and lineups"""
+    import os
     # Get shows user can manage
     owned_shows = Show.query.filter_by(owner_id=current_user.id, is_deleted=False).all()
 
@@ -260,6 +261,7 @@ def host_dashboard():
         owned_shows=owned_shows,
         managed_shows=managed_shows,
         all_shows=all_shows,
+        google_maps_api_key=os.environ.get("GOOGLE_MAPS_API_KEY", ""),
     )
 
 
@@ -377,26 +379,28 @@ def create_show_api():
             )
 
     try:
-        # Create new show - times are assumed to be in Eastern Time
+        # Create new show - times are in the event's local timezone
         from app import local_to_utc
         
         # Parse times and convert to UTC for storage
         start_time_str = data["start_time"]
         end_time_str = data.get("end_time")
+        event_timezone = data.get("timezone", "America/New_York")  # Get timezone from form
         
-        # Convert time strings to datetime objects in ET, then to UTC
+        # Convert time strings to datetime objects in event timezone, then to UTC
         start_dt = datetime.strptime(f"2000-01-01 {start_time_str}", "%Y-%m-%d %H:%M")
-        start_time_utc = local_to_utc(start_dt, "America/New_York").time()
+        start_time_utc = local_to_utc(start_dt, event_timezone).time()
         
         end_time_utc = None
         if end_time_str:
             end_dt = datetime.strptime(f"2000-01-01 {end_time_str}", "%Y-%m-%d %H:%M")
-            end_time_utc = local_to_utc(end_dt, "America/New_York").time()
+            end_time_utc = local_to_utc(end_dt, event_timezone).time()
         
         show = Show(
             name=data["name"],
             venue=data["venue"],
             address=data["address"],
+            timezone=event_timezone,
             description=data.get("description", ""),
             day_of_week=data["day_of_week"],
             start_time=start_time_utc,

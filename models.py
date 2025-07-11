@@ -83,6 +83,7 @@ class Show(db.Model):
     name = db.Column(db.String(100), nullable=False)
     venue = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200), nullable=False)
+    timezone = db.Column(db.String(50), nullable=False, default="America/New_York")
     description = db.Column(db.Text)
 
     # Show timing and scheduling
