@@ -118,7 +118,7 @@ class EventForm(FlaskForm):
     )
     
     signups_closed_value = IntegerField(
-        "Signups Close", validators=[DataRequired(), NumberRange(min=-1440, max=525600)], default=0
+        "Signups Close", validators=[NumberRange(min=-1440, max=525600)], default=0
     )
     signups_closed_unit = SelectField(
         "Unit",
@@ -136,7 +136,8 @@ class EventForm(FlaskForm):
     # Deprecated field - keeping for backward compatibility
     signup_deadline_hours = IntegerField(
         "Signup Deadline (hours before)",
-        validators=[DataRequired(), NumberRange(min=0, max=72)],
+        validators=[NumberRange(min=0, max=72)],
+        default=2,
     )
     show_host_info = BooleanField("Show host information publicly", default=True)
     show_owner_info = BooleanField("Show owner information publicly", default=False)

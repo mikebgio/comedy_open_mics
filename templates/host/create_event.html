@@ -175,7 +175,7 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <!-- Google Maps JavaScript API -->
 <script>
     function initMap() {
@@ -308,10 +308,43 @@
 
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded, checking Google Maps...');
+        console.log('Google available?', typeof google !== 'undefined');
+        console.log('API Key present?', '{{ GOOGLE_MAPS_API_KEY|length > 0 }}');
+        
         // Check if Google Maps is available
         if (typeof google === 'undefined') {
             console.error('Google Maps API not loaded');
             updateDebugInfo('Maps API not available. Please enter address manually.');
+        } else {
+            console.log('Google Maps API is available');
+            updateDebugInfo('Google Maps loaded successfully');
+        }
+        
+        // Add form validation debugging
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                console.log('Form submitted!');
+                console.log('Form data:', new FormData(form));
+                
+                // Check required fields
+                const requiredFields = form.querySelectorAll('[required]');
+                let hasErrors = false;
+                requiredFields.forEach(field => {
+                    if (!field.value.trim()) {
+                        console.log('Missing required field:', field.name);
+                        hasErrors = true;
+                    }
+                });
+                
+                if (hasErrors) {
+                    console.log('Form validation failed');
+                    e.preventDefault();
+                } else {
+                    console.log('Form validation passed, submitting...');
+                }
+            });
         }
     });
 </script>
