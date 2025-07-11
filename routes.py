@@ -34,7 +34,68 @@ def is_safe_url(target):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    if current_user.is_authenticated:
+        # Unified dashboard for logged-in users
+        
+        # My Next Set - next event user is signed up for
+        next_signup = (
+            Signup.query.filter_by(comedian_id=current_user.id)
+            .join(ShowInstance)
+            .filter(ShowInstance.instance_date >= date.today())
+            .order_by(ShowInstance.instance_date)
+            .first()
+        )
+        
+        # My Open Mics - shows owned by user (hide if empty)
+        owned_shows = Show.query.filter_by(owner_id=current_user.id, is_deleted=False).all()
+        
+        # Get upcoming instances for owned shows
+        owned_show_instances = []
+        if owned_shows:
+            owned_show_ids = [show.id for show in owned_shows]
+            owned_show_instances = (
+                ShowInstance.query.filter(
+                    ShowInstance.show_id.in_(owned_show_ids),
+                    ShowInstance.instance_date >= date.today(),
+                    ShowInstance.is_cancelled == False,
+                )
+                .order_by(ShowInstance.instance_date)
+                .limit(5)
+                .all()
+            )
+        
+        # Your Upcoming Performances - user's signups
+        upcoming_performances = (
+            Signup.query.filter_by(comedian_id=current_user.id)
+            .join(ShowInstance)
+            .filter(ShowInstance.instance_date >= date.today())
+            .order_by(ShowInstance.instance_date)
+            .limit(5)
+            .all()
+        )
+        
+        return render_template(
+            "unified_dashboard.html",
+            next_signup=next_signup,
+            owned_shows=owned_shows,
+            owned_show_instances=owned_show_instances,
+            upcoming_performances=upcoming_performances,
+        )
+    else:
+        # Public landing page for non-authenticated users
+        # Get today's events for sidebar
+        events_today = (
+            ShowInstance.query.join(Show)
+            .filter(
+                Show.is_deleted == False,
+                ShowInstance.instance_date == date.today(),
+                ShowInstance.is_cancelled == False,
+            )
+            .order_by(Show.start_time)
+            .all()
+        )
+        
+        return render_template("index.html", events_today=events_today)
 
 
 @app.route("/register", methods=["GET", "POST"])

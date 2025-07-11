@@ -31,13 +31,25 @@
                     </li>
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('calendar_view') }}">
                                 <i class="fas fa-calendar-alt me-1"></i>Calendar
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('comedian_dashboard') }}">
+                                <i class="fas fa-microphone me-1"></i>Find Shows
+                            </a>
+                        </li>
+                        <!-- Show host dashboard link only if user has management rights -->
+                        {% set user_owns_shows = current_user.owned_shows|length > 0 %}
+                        {% set user_has_roles = current_user.show_runner_roles|length > 0 or current_user.show_host_roles|length > 0 %}
+                        {% if user_owns_shows or user_has_roles %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('host_dashboard') }}">
+                                <i class="fas fa-users me-1"></i>Manage Shows
+                            </a>
+                        </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
                 
