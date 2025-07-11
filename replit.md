@@ -41,10 +41,11 @@ The application uses a sophisticated data model with the following key entities:
 - Password hashing with Werkzeug security
 
 ### Event Management
-- Show creation and management by hosts
+- Show creation and management by hosts through modal interfaces
 - Recurring show templates with instance generation
 - Event cancellation and rescheduling capabilities
-- Calendar view for event visualization
+- Calendar view with color-coded events based on user relationship
+- Modal-based "View Upcoming Lineups" functionality
 
 ### Signup System
 - Comedian signup for available time slots
@@ -56,6 +57,11 @@ The application uses a sophisticated data model with the following key entities:
 - AWS SES integration for email notifications
 - Email verification for new accounts
 - Event notifications and reminders
+
+### Calendar Features
+- Color-coded events: gray (available), green (signed up), red (owned)
+- Compact legend for visual reference
+- Modal-based event details and management
 
 ## Data Flow
 
@@ -101,4 +107,27 @@ The application uses a sophisticated data model with the following key entities:
 - Coverage reporting for quality assurance
 - CI/CD pipeline compatibility
 
-The application is designed to be scalable and maintainable, with clear separation of concerns and comprehensive error handling throughout the system.
+## Recent Changes (July 2025)
+
+### Host Dashboard Overhaul
+- Implemented modal-based event creation and editing
+- Added change tracking with visual indicators (yellow highlighting)
+- Replaced "View Lineup" with "View Upcoming Lineups" functionality
+- Removed unnecessary Settings button for cleaner interface
+- Fixed JavaScript conflicts and template errors
+
+### Calendar Enhancement
+- Added color-coded events based on user relationship
+- Implemented compact legend below calendar
+- Enhanced visual feedback for event ownership and participation
+
+### Code Cleanup
+- Consolidated routes files: `routes_simple.py` → `routes.py`
+- Removed backup files: `routes_old.py`, `models_backup.py`, `models_new.py`
+- Cleaned up test files to single `test_integration.py`
+- Removed migration files and intermediate artifacts
+- Streamlined project structure for production readiness
+
+## Technical Architecture
+
+The application is designed to be scalable and maintainable, with clear separation of concerns and comprehensive error handling throughout the system. The modal-based interface provides a modern user experience while maintaining server-side validation and security.
