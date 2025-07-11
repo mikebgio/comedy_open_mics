@@ -122,10 +122,10 @@
                                     <i class="fas fa-info me-1"></i>Info
                                 </a>
                                 {% if event.id not in signup_event_ids %}
-                                    <a href="{{ url_for('signup_for_event', event_id=event.id) }}" 
-                                       class="btn btn-sm btn-success">
+                                    <button onclick="showSignupModal({{ event.id }})" 
+                                            class="btn btn-sm btn-success">
                                         <i class="fas fa-plus me-1"></i>Sign Up
-                                    </a>
+                                    </button>
                                 {% else %}
                                     <span class="badge bg-success">Signed Up</span>
                                 {% endif %}

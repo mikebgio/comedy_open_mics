@@ -468,7 +468,13 @@ def signup_for_event(event_id):
     # Check if show instance is cancelled
     if instance.is_cancelled:
         flash("This show is cancelled.", "error")
-        return redirect(url_for("dashboard"))
+        referrer = request.referrer
+        if referrer and 'calendar' in referrer:
+            return redirect(url_for("calendar_view"))
+        elif referrer and 'comedian' in referrer:
+            return redirect(url_for("comedian_dashboard"))
+        else:
+            return redirect(url_for("comedian_dashboard"))
     
     # Check if user is already signed up
     existing_signup = Signup.query.filter_by(
@@ -478,7 +484,13 @@ def signup_for_event(event_id):
     
     if existing_signup:
         flash("You are already signed up for this show.", "warning")
-        return redirect(url_for("dashboard"))
+        referrer = request.referrer
+        if referrer and 'calendar' in referrer:
+            return redirect(url_for("calendar_view"))
+        elif referrer and 'comedian' in referrer:
+            return redirect(url_for("comedian_dashboard"))
+        else:
+            return redirect(url_for("comedian_dashboard"))
     
     form = SignupForm()
     
@@ -490,13 +502,25 @@ def signup_for_event(event_id):
         
         if datetime.now() > signup_deadline:
             flash("Signup deadline has passed for this show.", "error")
-            return redirect(url_for("dashboard"))
+            referrer = request.referrer
+            if referrer and 'calendar' in referrer:
+                return redirect(url_for("calendar_view"))
+            elif referrer and 'comedian' in referrer:
+                return redirect(url_for("comedian_dashboard"))
+            else:
+                return redirect(url_for("comedian_dashboard"))
         
         # Check if show is full
         current_signups = Signup.query.filter_by(show_instance_id=instance.id).count()
         if current_signups >= instance.max_signups:
             flash("This show is full.", "error")
-            return redirect(url_for("dashboard"))
+            referrer = request.referrer
+            if referrer and 'calendar' in referrer:
+                return redirect(url_for("calendar_view"))
+            elif referrer and 'comedian' in referrer:
+                return redirect(url_for("comedian_dashboard"))
+            else:
+                return redirect(url_for("comedian_dashboard"))
         
         # Create signup
         signup = Signup(
@@ -508,9 +532,79 @@ def signup_for_event(event_id):
         db.session.commit()
         
         flash(f"Successfully signed up for {instance.show.name}!", "success")
-        return redirect(url_for("dashboard"))
+        
+        # Redirect based on referrer
+        referrer = request.referrer
+        if referrer and 'calendar' in referrer:
+            return redirect(url_for("calendar_view"))
+        elif referrer and 'comedian' in referrer:
+            return redirect(url_for("comedian_dashboard"))
+        else:
+            return redirect(url_for("comedian_dashboard"))
+    
+    # Handle AJAX requests for modal
+    if request.headers.get('Content-Type') == 'application/json':
+        return jsonify({
+            'event_name': instance.show.name,
+            'event_date': instance.instance_date.strftime('%A, %B %d, %Y'),
+            'event_time': instance.start_time.strftime('%I:%M %p'),
+            'venue': instance.show.venue,
+            'signups': Signup.query.filter_by(show_instance_id=instance.id).count(),
+            'max_signups': instance.max_signups
+        })
     
     return render_template("comedian/signup.html", form=form, event=instance)
+
+
+@app.route("/api/signup/<int:event_id>", methods=["POST"])
+@login_required
+def api_signup_for_event(event_id):
+    """AJAX endpoint for signing up for events"""
+    instance = ShowInstance.query.get_or_404(event_id)
+    
+    # Check if show instance is cancelled
+    if instance.is_cancelled:
+        return jsonify({'success': False, 'error': 'This show is cancelled.'}), 400
+    
+    # Check if user is already signed up
+    existing_signup = Signup.query.filter_by(
+        comedian_id=current_user.id,
+        show_instance_id=instance.id
+    ).first()
+    
+    if existing_signup:
+        return jsonify({'success': False, 'error': 'You are already signed up for this show.'}), 400
+    
+    # Check if signups are still open
+    from datetime import datetime, timedelta
+    show_datetime = datetime.combine(instance.instance_date, instance.start_time)
+    signup_deadline = show_datetime - timedelta(hours=instance.show.signup_window_after_hours)
+    
+    if datetime.now() > signup_deadline:
+        return jsonify({'success': False, 'error': 'Signup deadline has passed for this show.'}), 400
+    
+    # Check if show is full
+    current_signups = Signup.query.filter_by(show_instance_id=instance.id).count()
+    if current_signups >= instance.max_signups:
+        return jsonify({'success': False, 'error': 'This show is full.'}), 400
+    
+    # Get notes from request
+    notes = request.json.get('notes', '') if request.is_json else ''
+    
+    # Create signup
+    signup = Signup(
+        comedian_id=current_user.id,
+        show_instance_id=instance.id,
+        notes=notes
+    )
+    db.session.add(signup)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True, 
+        'message': f'Successfully signed up for {instance.show.name}!',
+        'signup_count': current_signups + 1
+    })
 
 
 @app.route("/cancel_signup/<int:signup_id>", methods=["POST"])

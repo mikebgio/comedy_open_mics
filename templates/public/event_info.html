@@ -103,9 +103,9 @@
                                 </button>
                             </form>
                         {% else %}
-                            <a href="{{ url_for('signup_for_event', event_id=event.id) }}" class="btn btn-success">
+                            <button onclick="showSignupModal({{ event.id }})" class="btn btn-success">
                                 <i class="fas fa-plus me-2"></i>Sign Up for This Mic
-                            </a>
+                            </button>
                         {% endif %}
                     {% endif %}
                 </div>

@@ -389,7 +389,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         content += cardBody.innerHTML;
                     }
                     if (cardFooter) {
-                        content += '<div class="mt-3 pt-3 border-top">' + cardFooter.innerHTML + '</div>';
+                        // Replace signup links with modal buttons
+                        let footerContent = cardFooter.innerHTML;
+                        footerContent = footerContent.replace(
+                            /href="[^"]*signup[^"]*"/g, 
+                            `onclick="showSignupModal(${eventId}); return false;" href="#"`
+                        );
+                        content += '<div class="mt-3 pt-3 border-top">' + footerContent + '</div>';
                     }
                     
                     document.getElementById('eventDetails').innerHTML = content;
