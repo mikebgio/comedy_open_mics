@@ -43,7 +43,7 @@
                     
                     <div id="lineup-container">
                         {% for signup in signups %}
-                            <div class="lineup-item border rounded p-3 mb-2 bg-light" data-signup-id="{{ signup.id }}">
+                            <div class="lineup-item border rounded p-3 mb-2 bg-white" data-signup-id="{{ signup.id }}">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center">
                                         <div class="drag-handle me-3" style="cursor: grab; padding: 5px;">
@@ -199,16 +199,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 item.addEventListener('dragstart', function(e) {
                     draggedElement = this;
-                    this.style.opacity = '0.5';
-                    this.style.transform = 'rotate(5deg)';
+                    this.classList.add('dragging');
                     
                     // Store the original position
                     draggedAfterElement = this.nextElementSibling;
                 });
                 
                 item.addEventListener('dragend', function(e) {
-                    this.style.opacity = '';
-                    this.style.transform = '';
+                    this.classList.remove('dragging');
                     
                     // Check if position actually changed
                     if (draggedElement && draggedAfterElement !== this.nextElementSibling) {
@@ -407,28 +405,71 @@ function cancelInstance() {
 <style>
 .lineup-item {
     transition: all 0.2s ease;
+    background-color: #ffffff !important;
+    border: 2px solid #e9ecef !important;
+    color: #212529 !important;
 }
 
 .lineup-item:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: #007bff !important;
+    background-color: #f8f9fa !important;
+}
+
+.lineup-item h6 {
+    color: #212529 !important;
+    font-weight: 600;
+}
+
+.lineup-item small {
+    color: #6c757d !important;
 }
 
 .drag-over {
-    background-color: #f8f9fa;
-    border: 2px dashed #007bff;
+    background-color: #e3f2fd !important;
+    border: 2px dashed #007bff !important;
 }
 
 .lineup-item.dragging {
-    opacity: 0.5;
-    transform: rotate(5deg);
+    opacity: 0.7;
+    transform: rotate(3deg);
+    background-color: #fff3cd !important;
+    border-color: #ffc107 !important;
+}
+
+.drag-handle {
+    color: #6c757d !important;
+    transition: color 0.2s ease;
 }
 
 .drag-handle:hover {
     color: #007bff !important;
+    transform: scale(1.1);
 }
 
 .lineup-item:hover .drag-handle {
     color: #007bff !important;
+}
+
+.drag-handle:active {
+    color: #0056b3 !important;
+    cursor: grabbing !important;
+}
+
+/* Badge styling improvements */
+.lineup-item .badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Button styling improvements */
+.lineup-item .btn {
+    border-width: 1px;
+}
+
+.lineup-item .btn:hover {
+    transform: scale(1.05);
+    transition: transform 0.1s ease;
 }
 </style>
 {% endblock %}
