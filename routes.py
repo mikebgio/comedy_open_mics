@@ -614,7 +614,7 @@ def create_event():
         flash("Show created successfully!")
         return redirect(url_for("host_dashboard"))
 
-    return render_template("host/create_event.html", form=form)
+    return render_template("host/create_event.html", form=form, GOOGLE_MAPS_API_KEY=os.environ.get('GOOGLE_MAPS_API_KEY'))
 
 
 @app.route("/host/show/<int:show_id>/settings", methods=["GET", "POST"])

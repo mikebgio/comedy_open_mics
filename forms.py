@@ -102,7 +102,7 @@ class EventForm(FlaskForm):
     
     # New signup timing fields
     signups_open_value = IntegerField(
-        "Signups Open", validators=[DataRequired(), NumberRange(min=0, max=525600)]
+        "Signups Open", validators=[DataRequired(), NumberRange(min=0, max=525600)], default=2
     )
     signups_open_unit = SelectField(
         "Unit",
@@ -118,7 +118,7 @@ class EventForm(FlaskForm):
     )
     
     signups_closed_value = IntegerField(
-        "Signups Close", validators=[DataRequired(), NumberRange(min=-1440, max=525600)]
+        "Signups Close", validators=[DataRequired(), NumberRange(min=-1440, max=525600)], default=0
     )
     signups_closed_unit = SelectField(
         "Unit",
@@ -129,7 +129,7 @@ class EventForm(FlaskForm):
             ("weeks", "Weeks"),
             ("months", "Months"),
         ],
-        default="hours",
+        default="minutes",
         validators=[DataRequired()],
     )
     
