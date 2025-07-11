@@ -566,8 +566,34 @@ def calendar_view():
         # Get signup count
         signup_count = Signup.query.filter_by(show_instance_id=instance.id).count()
 
+        # Determine color based on user's relationship to event
+        background_color = "#6c757d"  # Default dull gray
+        color_class = "default-event"
+        
+        if current_user.is_authenticated:
+            # Check if user owns the event
+            if instance.show.owner_id == current_user.id:
+                background_color = "#dc3545"  # Red for owned events
+                color_class = "owned-event"
+            else:
+                # Check if user has signed up for this event
+                user_signup = Signup.query.filter_by(
+                    comedian_id=current_user.id,
+                    show_instance_id=instance.id
+                ).first()
+                
+                if user_signup:
+                    background_color = "#28a745"  # Green for signed up events
+                    color_class = "signed-up-event"
+
         events_by_date[instance_date].append(
-            {"event": instance, "date": instance_date, "signup_count": signup_count}
+            {
+                "event": instance, 
+                "date": instance_date, 
+                "signup_count": signup_count,
+                "background_color": background_color,
+                "color_class": color_class
+            }
         )
 
     # Generate calendar days for the requested month

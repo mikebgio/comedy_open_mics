@@ -91,10 +91,11 @@
                                     
                                     {% if current_date in events_by_date %}
                                         {% for event_data in events_by_date[current_date] %}
-                                            <div class="calendar-event 
-                                                        {% if event_data.event.show.owner_id == current_user.id %}owner-event draggable{% endif %}"
+                                            <div class="calendar-event {{ event_data.color_class }}
+                                                        {% if event_data.event.show.owner_id == current_user.id %}draggable{% endif %}"
                                                  data-event-id="{{ event_data.event.id }}"
                                                  data-event-date="{{ event_data.date.isoformat() }}"
+                                                 style="background-color: {{ event_data.background_color }}; border-color: {{ event_data.background_color }};"
                                                  draggable="{% if event_data.event.show.owner_id == current_user.id %}true{% else %}false{% endif %}">
                                                 
                                                 <div class="event-content">
