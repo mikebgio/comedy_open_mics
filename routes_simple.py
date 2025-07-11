@@ -610,14 +610,34 @@ def calendar_events_api():
 
         events = []
         for instance in instances:
+            # Determine color based on user's relationship to event
+            background_color = "#6c757d"  # Default dull blue/gray
+            border_color = "#6c757d"
+            
+            if current_user.is_authenticated:
+                # Check if user owns the event
+                if instance.show.owner_id == current_user.id:
+                    background_color = "#dc3545"  # Red for owned events
+                    border_color = "#dc3545"
+                else:
+                    # Check if user has signed up for this event
+                    user_signup = Signup.query.filter_by(
+                        comedian_id=current_user.id,
+                        show_instance_id=instance.id
+                    ).first()
+                    
+                    if user_signup:
+                        background_color = "#28a745"  # Green for signed up events
+                        border_color = "#28a745"
+            
             events.append(
                 {
                     "id": instance.id,
                     "title": f"{instance.show.name} @ {instance.show.venue}",
                     "date": instance.instance_date.isoformat(),
                     "url": url_for("event_info", event_id=instance.id),
-                    "backgroundColor": "#007bff",
-                    "borderColor": "#007bff",
+                    "backgroundColor": background_color,
+                    "borderColor": border_color,
                 }
             )
 

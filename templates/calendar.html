@@ -22,6 +22,36 @@
             </div>
         </div>
 
+        {% if current_user.is_authenticated %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="fas fa-palette me-2"></i>Event Color Legend
+                </h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-color" style="background-color: #6c757d;"></div>
+                            <span class="ms-2">Available Events</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-color" style="background-color: #28a745;"></div>
+                            <span class="ms-2">Events You're Signed Up For</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-color" style="background-color: #dc3545;"></div>
+                            <span class="ms-2">Events You Own</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         {% if current_user.is_host %}
         <div class="alert alert-info mb-4">
             <i class="fas fa-info-circle me-2"></i>
@@ -498,4 +528,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<style>
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+</style>
 {% endblock %}
