@@ -558,6 +558,14 @@ def create_event():
     """Create a new recurring show"""
     form = EventForm()
     if form.validate_on_submit():
+        # Convert signup timing to minutes
+        signups_open_minutes = Show.convert_time_to_minutes(
+            form.signups_open_value.data, form.signups_open_unit.data
+        )
+        signups_closed_minutes = Show.convert_time_to_minutes(
+            form.signups_closed_value.data, form.signups_closed_unit.data
+        )
+        
         # Create new show
         show = Show(
             name=form.name.data,
@@ -568,7 +576,9 @@ def create_event():
             start_time=form.start_time.data,
             end_time=form.end_time.data,
             max_signups=form.max_signups.data,
-            signup_window_after_hours=form.signup_deadline_hours.data,
+            signups_open=signups_open_minutes,
+            signups_closed=signups_closed_minutes,
+            signup_window_after_hours=form.signup_deadline_hours.data,  # Keep for backward compatibility
             owner_id=current_user.id,
             default_host_id=current_user.id,
             show_host_info=form.show_host_info.data,

@@ -104,31 +104,51 @@
                         <div class="form-text">Optional description about your open mic</div>
                     </div>
                     
+                    <div class="mb-3">
+                        {{ form.max_signups.label(class="form-label") }}
+                        {{ form.max_signups(class="form-control") }}
+                        {% if form.max_signups.errors %}
+                            <div class="text-danger">
+                                {% for error in form.max_signups.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Maximum number of comedians per show</div>
+                    </div>
+                    
+                    <!-- Signup Timing Section -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            {{ form.max_signups.label(class="form-label") }}
-                            {{ form.max_signups(class="form-control") }}
-                            {% if form.max_signups.errors %}
+                            <label class="form-label">Signups Open</label>
+                            <div class="input-group">
+                                {{ form.signups_open_value(class="form-control") }}
+                                {{ form.signups_open_unit(class="form-select") }}
+                            </div>
+                            {% if form.signups_open_value.errors or form.signups_open_unit.errors %}
                                 <div class="text-danger">
-                                    {% for error in form.max_signups.errors %}
+                                    {% for error in form.signups_open_value.errors + form.signups_open_unit.errors %}
                                         <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Maximum number of comedians per show</div>
+                            <div class="form-text">How far in advance comedians can sign up</div>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            {{ form.signup_deadline_hours.label(class="form-label") }}
-                            {{ form.signup_deadline_hours(class="form-control") }}
-                            {% if form.signup_deadline_hours.errors %}
+                            <label class="form-label">Signups Close</label>
+                            <div class="input-group">
+                                {{ form.signups_closed_value(class="form-control") }}
+                                {{ form.signups_closed_unit(class="form-select") }}
+                            </div>
+                            {% if form.signups_closed_value.errors or form.signups_closed_unit.errors %}
                                 <div class="text-danger">
-                                    {% for error in form.signup_deadline_hours.errors %}
+                                    {% for error in form.signups_closed_value.errors + form.signups_closed_unit.errors %}
                                         <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="form-text">How many hours before the event should signups close</div>
+                            <div class="form-text">When signups close (negative = minutes into show)</div>
                         </div>
                     </div>
                     
