@@ -5,8 +5,8 @@ from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import app, db
-from forms import EventForm, LoginForm, RegistrationForm
-from models import Show, ShowInstance, Signup, User
+from forms import EventForm, LoginForm, RegistrationForm, SignupForm, CancellationForm, ShowSettingsForm, InstanceHostForm
+from models import Show, ShowInstance, ShowInstanceHost, ShowRunner, ShowHost, Signup, User
 
 
 def is_safe_url(target):
@@ -138,14 +138,21 @@ def comedian_dashboard():
         .all()
     )
 
-    # Get user's current signups
-    user_signups = Signup.query.filter_by(comedian_id=current_user.id).all()
-    signup_instance_ids = [signup.show_instance_id for signup in user_signups]
+    # Get user's current signups with show instance data
+    upcoming_signups = (
+        Signup.query.filter_by(comedian_id=current_user.id)
+        .join(ShowInstance)
+        .filter(ShowInstance.instance_date >= date.today())
+        .order_by(ShowInstance.instance_date)
+        .all()
+    )
+    
+    signup_instance_ids = [signup.show_instance_id for signup in upcoming_signups]
 
     return render_template(
         "comedian/dashboard.html",
         events=upcoming_instances,
-        user_signups=user_signups,
+        upcoming_signups=upcoming_signups,
         signup_event_ids=signup_instance_ids,
     )
 
@@ -449,3 +456,184 @@ def live_lineup(event_id):
     )
 
     return render_template("public/live_lineup.html", event=instance, signups=signups)
+
+
+@app.route("/signup/<int:event_id>", methods=["GET", "POST"])
+@login_required
+def signup_for_event(event_id):
+    """Allow comedians and hosts to sign up for show instances"""
+    instance = ShowInstance.query.get_or_404(event_id)
+    
+    # Check if show instance is cancelled
+    if instance.is_cancelled:
+        flash("This show is cancelled.", "error")
+        return redirect(url_for("dashboard"))
+    
+    # Check if user is already signed up
+    existing_signup = Signup.query.filter_by(
+        comedian_id=current_user.id,
+        show_instance_id=instance.id
+    ).first()
+    
+    if existing_signup:
+        flash("You are already signed up for this show.", "warning")
+        return redirect(url_for("dashboard"))
+    
+    form = SignupForm()
+    
+    if form.validate_on_submit():
+        # Check if signups are still open
+        from datetime import datetime, timedelta
+        show_datetime = datetime.combine(instance.instance_date, instance.start_time)
+        signup_deadline = show_datetime - timedelta(hours=instance.show.signup_window_after_hours)
+        
+        if datetime.now() > signup_deadline:
+            flash("Signup deadline has passed for this show.", "error")
+            return redirect(url_for("dashboard"))
+        
+        # Check if show is full
+        current_signups = Signup.query.filter_by(show_instance_id=instance.id).count()
+        if current_signups >= instance.max_signups:
+            flash("This show is full.", "error")
+            return redirect(url_for("dashboard"))
+        
+        # Create signup
+        signup = Signup(
+            comedian_id=current_user.id,
+            show_instance_id=instance.id,
+            notes=form.notes.data
+        )
+        db.session.add(signup)
+        db.session.commit()
+        
+        flash(f"Successfully signed up for {instance.show.name}!", "success")
+        return redirect(url_for("dashboard"))
+    
+    return render_template("comedian/signup.html", form=form, event=instance)
+
+
+@app.route("/cancel_signup/<int:signup_id>", methods=["POST"])
+@login_required
+def cancel_signup(signup_id):
+    """Allow comedians to cancel their own signups or hosts to remove signups"""
+    signup = Signup.query.get_or_404(signup_id)
+    
+    # Check if user owns this signup or can manage the show
+    can_cancel = (signup.comedian_id == current_user.id or 
+                  current_user.can_manage_lineup(signup.show_instance.show))
+    
+    if not can_cancel:
+        flash("You can only cancel your own signups.", "error")
+        return redirect(url_for("dashboard"))
+    
+    show_name = signup.show_instance.show.name
+    comedian_name = signup.comedian.full_name() if signup.comedian else "Guest"
+    
+    db.session.delete(signup)
+    db.session.commit()
+    
+    if signup.comedian_id == current_user.id:
+        flash(f"Cancelled your signup for {show_name}.", "success")
+        return redirect(url_for("dashboard"))
+    else:
+        flash(f"Removed {comedian_name} from {show_name}.", "success")
+        return redirect(url_for("manage_lineup", event_id=signup.show_instance.id))
+
+
+@app.route("/manage_lineup/<int:event_id>", methods=["GET", "POST"])
+@login_required
+def manage_lineup(event_id):
+    """Allow hosts to manage show lineup and manually add comedians"""
+    instance = ShowInstance.query.get_or_404(event_id)
+    
+    # Check if user can manage this show
+    if not current_user.can_manage_lineup(instance.show):
+        flash("You don't have permission to manage this show's lineup.", "error")
+        return redirect(url_for("dashboard"))
+    
+    # Get signups ordered by position then signup time
+    signups = (
+        Signup.query.filter_by(show_instance_id=instance.id)
+        .order_by(Signup.position.asc().nullslast(), Signup.signup_time)
+        .all()
+    )
+    
+    # Handle position updates
+    if request.method == "POST":
+        if "update_positions" in request.form:
+            # Update positions from form data
+            for signup in signups:
+                position_key = f"position_{signup.id}"
+                if position_key in request.form:
+                    new_position = request.form[position_key]
+                    signup.position = int(new_position) if new_position else None
+            
+            db.session.commit()
+            flash("Lineup positions updated.", "success")
+            return redirect(url_for("manage_lineup", event_id=event_id))
+        
+        elif "add_comedian" in request.form:
+            # Add comedian manually
+            comedian_name = request.form.get("comedian_name", "").strip()
+            if comedian_name:
+                # Try to find existing user first
+                comedian = User.query.filter_by(username=comedian_name).first()
+                if not comedian:
+                    # Create a note-based signup for non-registered comedian
+                    signup = Signup(
+                        comedian_id=None,  # No user account
+                        show_instance_id=instance.id,
+                        notes=f"Host added: {comedian_name}"
+                    )
+                    db.session.add(signup)
+                    db.session.commit()
+                    flash(f"Added {comedian_name} to the lineup.", "success")
+                else:
+                    # Check if already signed up
+                    existing = Signup.query.filter_by(
+                        comedian_id=comedian.id,
+                        show_instance_id=instance.id
+                    ).first()
+                    if existing:
+                        flash(f"{comedian_name} is already signed up.", "warning")
+                    else:
+                        signup = Signup(
+                            comedian_id=comedian.id,
+                            show_instance_id=instance.id,
+                            notes="Added by host"
+                        )
+                        db.session.add(signup)
+                        db.session.commit()
+                        flash(f"Added {comedian_name} to the lineup.", "success")
+            
+            return redirect(url_for("manage_lineup", event_id=event_id))
+    
+    return render_template("host/manage_lineup.html", event=instance, signups=signups)
+
+
+@app.route("/host/reorder_lineup/<int:event_id>", methods=["POST"])
+@login_required
+def reorder_lineup(event_id):
+    """Handle drag-and-drop reordering of lineup positions"""
+    instance = ShowInstance.query.get_or_404(event_id)
+    
+    # Check if user can manage this show
+    if not current_user.can_manage_lineup(instance.show):
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+    
+    try:
+        data = request.get_json()
+        signup_ids = data.get("signup_ids", [])
+        
+        # Update positions based on order
+        for position, signup_id in enumerate(signup_ids, 1):
+            signup = Signup.query.get(signup_id)
+            if signup and signup.show_instance_id == instance.id:
+                signup.position = position
+        
+        db.session.commit()
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500

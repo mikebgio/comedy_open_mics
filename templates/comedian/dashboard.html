@@ -50,14 +50,14 @@
                                 {% for signup in upcoming_signups %}
                                 <tr>
                                     <td>
-                                        <strong>{{ signup.event.name }}</strong>
+                                        <strong>{{ signup.show_instance.show.name }}</strong>
                                         {% if signup.notes %}
                                             <br><small class="text-muted">{{ signup.notes }}</small>
                                         {% endif %}
                                     </td>
                                     <td>{{ signup.show_instance.instance_date.strftime('%a, %b %d') }}</td>
-                                    <td>{{ signup.event.start_time.strftime('%I:%M %p') }}</td>
-                                    <td>{{ signup.event.venue }}</td>
+                                    <td>{{ signup.show_instance.start_time.strftime('%I:%M %p') }}</td>
+                                    <td>{{ signup.show_instance.show.venue }}</td>
                                     <td>
                                         {% if signup.position %}
                                             <span class="badge bg-success">#{{ signup.position }}</span>
@@ -66,10 +66,18 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('live_lineup', event_id=signup.event.id) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-list me-1"></i>View Lineup
-                                        </a>
+                                        <div class="d-flex gap-1">
+                                            <a href="{{ url_for('live_lineup', event_id=signup.show_instance.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-list me-1"></i>View
+                                            </a>
+                                            <form method="POST" action="{{ url_for('cancel_signup', signup_id=signup.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="return confirm('Cancel your signup for this show?')">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -98,21 +106,29 @@
                 {% if events %}
                     {% for event in events %}
                         <div class="event-card mb-3 p-3 border rounded">
-                            <h6 class="fw-bold">{{ event.name }}</h6>
+                            <h6 class="fw-bold">{{ event.show.name }}</h6>
                             <p class="mb-1">
-                                <i class="fas fa-calendar text-primary me-1"></i>{{ event.day_of_week }}s
+                                <i class="fas fa-calendar text-primary me-1"></i>{{ event.instance_date.strftime('%a, %b %d') }}
                             </p>
                             <p class="mb-1">
                                 <i class="fas fa-clock text-info me-1"></i>{{ event.start_time.strftime('%I:%M %p') }}
                             </p>
                             <p class="mb-2">
-                                <i class="fas fa-map-marker-alt text-danger me-1"></i>{{ event.venue }}
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i>{{ event.show.venue }}
                             </p>
                             <div class="d-flex gap-1">
                                 <a href="{{ url_for('event_info', event_id=event.id) }}" 
                                    class="btn btn-sm btn-outline-secondary">
                                     <i class="fas fa-info me-1"></i>Info
                                 </a>
+                                {% if event.id not in signup_event_ids %}
+                                    <a href="{{ url_for('signup_for_event', event_id=event.id) }}" 
+                                       class="btn btn-sm btn-success">
+                                        <i class="fas fa-plus me-1"></i>Sign Up
+                                    </a>
+                                {% else %}
+                                    <span class="badge bg-success">Signed Up</span>
+                                {% endif %}
                             </div>
                         </div>
                     {% endfor %}
