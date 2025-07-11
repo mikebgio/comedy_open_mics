@@ -136,6 +136,7 @@ The application uses a sophisticated data model with the following key entities:
   - Resolved API endpoint test failures (403 response handling)
   - Added informative job summaries and workflow reliability improvements
   - Enhanced .gitignore with build artifacts and deployment file exclusions
+  - Fixed Codecov action parameter from deprecated 'file' to 'files'
 
 ## Technical Architecture
 
