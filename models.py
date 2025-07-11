@@ -365,9 +365,9 @@ class ShowInstance(db.Model):
     
     def is_signup_open(self):
         """Check if signups are currently open for this instance"""
-        from datetime import datetime
+        from datetime import datetime, timezone
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         signup_open = self.show.get_signup_open_datetime(self.instance_date)
         signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
         
@@ -380,10 +380,10 @@ class ShowInstance(db.Model):
     
     def get_signup_status(self):
         """Get signup status with descriptive message"""
-        from datetime import datetime
+        from datetime import datetime, timezone
         from app import local_to_utc
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         signup_open = self.show.get_signup_open_datetime(self.instance_date)
         signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
         
