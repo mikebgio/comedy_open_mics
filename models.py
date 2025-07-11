@@ -181,8 +181,15 @@ class Show(db.Model):
         # Convert to timezone-aware datetime (times are stored in UTC)
         show_datetime_utc = show_datetime_utc.replace(tzinfo=timezone.utc)
         
-        # Subtract signups_closed minutes (can be negative for minutes into show)
-        signup_closed_utc = show_datetime_utc - timedelta(minutes=self.signups_closed)
+        # Calculate signup close time based on signups_closed value
+        # Positive values: close X minutes BEFORE show start
+        # Negative values: close X minutes AFTER show start  
+        if self.signups_closed >= 0:
+            # Normal case: close before the show
+            signup_closed_utc = show_datetime_utc - timedelta(minutes=self.signups_closed)
+        else:
+            # Negative case: close after the show starts (add the absolute value)
+            signup_closed_utc = show_datetime_utc + timedelta(minutes=abs(self.signups_closed))
         
         # Convert back to local timezone for display
         return utc_to_local(signup_closed_utc, self.timezone)
