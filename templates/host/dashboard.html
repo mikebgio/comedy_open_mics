@@ -305,10 +305,18 @@ function checkForChanges() {
 }
 
 function getFormData() {
+    const addressField = document.getElementById('eventAddress');
+    const selectedAddress = addressField.getAttribute('data-selected-address') || 
+                          addressField.value || 
+                          addressField.textContent || 
+                          '';
+    
+    console.log('Form address value:', selectedAddress);
+    
     return {
         name: document.getElementById('eventName').value,
         venue: document.getElementById('eventVenue').value,
-        address: document.getElementById('eventAddress').value || document.getElementById('eventAddress').getAttribute('value') || '',
+        address: selectedAddress,
         timezone: document.getElementById('eventTimezone').value || 'America/New_York',
         day_of_week: document.getElementById('eventDayOfWeek').value,
         start_time: document.getElementById('eventStartTime').value,
@@ -384,13 +392,17 @@ function initializeGoogleMaps() {
             return;
         }
 
-        console.log('Selected place:', place.displayName || place.formattedAddress);
+        const selectedAddress = place.displayName || place.formattedAddress;
+        console.log('Selected place:', selectedAddress);
+
+        // Store the selected address in a data attribute for form submission
+        addressField.setAttribute('data-selected-address', selectedAddress);
 
         // Get timezone from coordinates
         getTimezoneFromCoordinates(
             place.geometry.location.lat(),
             place.geometry.location.lng(),
-            place.displayName || place.formattedAddress
+            selectedAddress
         );
     });
     
@@ -405,6 +417,11 @@ function initializeGoogleMaps() {
             inputElement.style.backgroundColor = '#343a40';
             inputElement.style.color = '#fff';
             inputElement.style.borderColor = '#495057';
+            
+            // Also listen for input changes to capture manual typing
+            inputElement.addEventListener('input', (e) => {
+                addressField.setAttribute('data-selected-address', e.target.value);
+            });
         }
     }, 100);
     
@@ -644,8 +661,9 @@ function setupFallbackAddressDetection() {
     // Set up fallback address detection
     const addressField = document.getElementById('eventAddress');
     addressField.addEventListener('blur', function() {
-        const address = this.value || this.textContent;
+        const address = this.getAttribute('data-selected-address') || this.value || this.textContent;
         if (address) {
+            this.setAttribute('data-selected-address', address);
             fallbackTimezoneDetection(address);
         }
     });
