@@ -11,9 +11,9 @@
         <p class="text-muted mb-0">{{ event.show.name }} - {{ event.instance_date.strftime('%A, %B %d, %Y') }}</p>
     </div>
     <div>
-        <a href="{{ url_for('random_select', event_id=event.id) }}" class="btn btn-warning me-2">
+        <button type="button" class="btn btn-warning me-2" onclick="randomizeLineup()">
             <i class="fas fa-random me-2"></i>Random Select
-        </a>
+        </button>
         <a href="{{ url_for('live_lineup', event_id=event.id) }}" class="btn btn-success me-2">
             <i class="fas fa-eye me-2"></i>Live View
         </a>
@@ -310,6 +310,68 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Function to randomize lineup order
+function randomizeLineup() {
+    const container = document.getElementById('lineup-container');
+    if (!container) return;
+    
+    const items = Array.from(container.querySelectorAll('.lineup-item'));
+    if (items.length < 2) {
+        alert('Need at least 2 comedians to randomize lineup');
+        return;
+    }
+    
+    if (confirm('Randomize the lineup order? This will shuffle all performers randomly.')) {
+        // Shuffle array using Fisher-Yates algorithm
+        for (let i = items.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [items[i], items[j]] = [items[j], items[i]];
+        }
+        
+        // Re-append items in new order
+        items.forEach(item => container.appendChild(item));
+        
+        // Save the new order
+        const signupIds = items.map(item => item.getAttribute('data-signup-id'));
+        const saveStatus = document.getElementById('save-status');
+        
+        saveStatus.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Saving randomized order...</span>';
+        
+        fetch(`/host/reorder_lineup/{{ event.id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ signup_ids: signupIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                saveStatus.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Lineup randomized!</span>';
+                
+                // Update position badges
+                items.forEach((item, index) => {
+                    const badge = item.querySelector('.badge');
+                    if (badge) {
+                        badge.textContent = `#${index + 1}`;
+                        badge.className = 'badge bg-primary me-2';
+                    }
+                });
+                
+                setTimeout(() => {
+                    saveStatus.innerHTML = '';
+                }, 3000);
+            } else {
+                saveStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i>Error randomizing</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error randomizing lineup:', error);
+            saveStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i>Error randomizing</span>';
+        });
+    }
+}
 </script>
 
 <style>
