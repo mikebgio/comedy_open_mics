@@ -159,9 +159,9 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('cancel_event', event_id=event.id) }}" class="btn btn-outline-danger btn-sm">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="cancelInstance()">
                         <i class="fas fa-ban me-2"></i>Cancel This Date
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -369,6 +369,36 @@ function randomizeLineup() {
         .catch(error => {
             console.error('Error randomizing lineup:', error);
             saveStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i>Error randomizing</span>';
+        });
+    }
+}
+
+// Function to cancel show instance
+function cancelInstance() {
+    if (confirm('Cancel this show date? This will notify all signed-up comedians and cannot be undone.')) {
+        const reason = prompt('Enter cancellation reason (optional):');
+        
+        const formData = new FormData();
+        if (reason && reason.trim()) {
+            formData.append('reason', reason.trim());
+        }
+        
+        fetch(`/cancel_show_instance/{{ event.id }}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Show instance cancelled successfully.');
+                window.location.href = '{{ url_for("host_dashboard") }}';
+            } else {
+                alert('Error cancelling show: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error cancelling show instance:', error);
+            alert('Error cancelling show. Please try again.');
         });
     }
 }
