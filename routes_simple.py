@@ -535,7 +535,7 @@ def cancel_signup(signup_id):
     
     if signup.comedian_id == current_user.id:
         flash(f"Cancelled your signup for {show_name}.", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("comedian_dashboard"))
     else:
         flash(f"Removed {comedian_name} from {show_name}.", "success")
         return redirect(url_for("manage_lineup", event_id=signup.show_instance.id))
