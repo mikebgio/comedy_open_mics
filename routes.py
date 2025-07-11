@@ -226,10 +226,19 @@ def comedian_dashboard():
     )
 
     signup_instance_ids = [signup.show_instance_id for signup in upcoming_signups]
+    
+    # Add signup status to each event
+    events_with_status = []
+    for event in upcoming_instances:
+        signup_status = event.get_signup_status()
+        events_with_status.append({
+            'event': event,
+            'signup_status': signup_status
+        })
 
     return render_template(
         "comedian/dashboard.html",
-        events=upcoming_instances,
+        events=events_with_status,
         upcoming_signups=upcoming_signups,
         signup_event_ids=signup_instance_ids,
     )
@@ -871,8 +880,11 @@ def event_info(event_id):
         .order_by(Signup.signup_time)
         .all()
     )
+    
+    # Get signup status for display
+    signup_status = instance.get_signup_status()
 
-    return render_template("public/event_info.html", event=instance, signups=signups)
+    return render_template("public/event_info.html", event=instance, signups=signups, signup_status=signup_status)
 
 
 @app.route("/live/<int:event_id>")
@@ -930,16 +942,10 @@ def signup_for_event(event_id):
     form = SignupForm()
 
     if form.validate_on_submit():
-        # Check if signups are still open
-        from datetime import datetime, timedelta
-
-        show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-        signup_deadline = show_datetime - timedelta(
-            hours=instance.show.signup_window_after_hours
-        )
-
-        if datetime.now() > signup_deadline:
-            flash("Signup deadline has passed for this show.", "error")
+        # Check if signups are open using new signup window logic
+        if not instance.is_signup_open():
+            signup_status = instance.get_signup_status()
+            flash(f"Cannot sign up: {signup_status['message']}", "error")
             referrer = request.referrer
             if referrer and "calendar" in referrer:
                 return redirect(url_for("calendar_view"))
@@ -1019,19 +1025,11 @@ def api_signup_for_event(event_id):
             400,
         )
 
-    # Check if signups are still open
-    from datetime import datetime, timedelta
-
-    show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-    signup_deadline = show_datetime - timedelta(
-        hours=instance.show.signup_window_after_hours
-    )
-
-    if datetime.now() > signup_deadline:
+    # Check if signup window is open
+    if not instance.is_signup_open():
+        signup_status = instance.get_signup_status()
         return (
-            jsonify(
-                {"success": False, "error": "Signup deadline has passed for this show."}
-            ),
+            jsonify({"success": False, "error": signup_status['message']}),
             400,
         )
 

@@ -103,9 +103,15 @@
                                 </button>
                             </form>
                         {% else %}
-                            <button onclick="showSignupModal({{ event.id }})" class="btn btn-success">
-                                <i class="fas fa-plus me-2"></i>Sign Up for This Mic
-                            </button>
+                            {% if signup_status.can_signup %}
+                                <button onclick="showSignupModal({{ event.id }})" class="btn btn-success">
+                                    <i class="fas fa-plus me-2"></i>Sign Up for This Mic
+                                </button>
+                            {% else %}
+                                <button class="btn btn-secondary" disabled title="{{ signup_status.message }}">
+                                    <i class="fas fa-clock me-2"></i>{{ signup_status.message }}
+                                </button>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </div>

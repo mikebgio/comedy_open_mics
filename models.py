@@ -362,6 +362,53 @@ class ShowInstance(db.Model):
             return hosts[0].full_name
         else:
             return ", ".join([host.full_name for host in hosts])
+    
+    def is_signup_open(self):
+        """Check if signups are currently open for this instance"""
+        from datetime import datetime
+        
+        now = datetime.utcnow()
+        signup_open = self.show.get_signup_open_datetime(self.instance_date)
+        signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
+        
+        # Convert to UTC for comparison
+        from app import local_to_utc
+        signup_open_utc = local_to_utc(signup_open, self.show.timezone)
+        signup_closed_utc = local_to_utc(signup_closed, self.show.timezone)
+        
+        return signup_open_utc <= now <= signup_closed_utc
+    
+    def get_signup_status(self):
+        """Get signup status with descriptive message"""
+        from datetime import datetime
+        from app import local_to_utc
+        
+        now = datetime.utcnow()
+        signup_open = self.show.get_signup_open_datetime(self.instance_date)
+        signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
+        
+        # Convert to UTC for comparison
+        signup_open_utc = local_to_utc(signup_open, self.show.timezone)
+        signup_closed_utc = local_to_utc(signup_closed, self.show.timezone)
+        
+        if now < signup_open_utc:
+            return {
+                'status': 'not_open',
+                'message': f"Signups open {signup_open.strftime('%m/%d/%y at %I:%M %p')}",
+                'can_signup': False
+            }
+        elif now > signup_closed_utc:
+            return {
+                'status': 'closed',
+                'message': "Signups are closed",
+                'can_signup': False
+            }
+        else:
+            return {
+                'status': 'open',
+                'message': "Signups are open",
+                'can_signup': True
+            }
 
 
 class ShowInstanceHost(db.Model):
