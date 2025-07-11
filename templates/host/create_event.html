@@ -160,6 +160,9 @@
                         </div>
                     </div>
                     
+                    <!-- Hidden deprecated field for backward compatibility -->
+                    {{ form.signup_deadline_hours(class="form-control", style="display: none;", value="2") }}
+                    
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-success">
                             <i class="fas fa-check me-2"></i>Create Event
