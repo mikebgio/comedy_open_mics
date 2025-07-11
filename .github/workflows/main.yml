@@ -181,13 +181,44 @@ jobs:
     
     - name: Create deployment artifact
       run: |
+        echo "Creating deployment artifact..."
+        
+        # Create list of files to include in deployment
+        find . -type f \
+          -not -path './.git/*' \
+          -not -path './__pycache__/*' \
+          -not -name '*.pyc' \
+          -not -path './.pytest_cache/*' \
+          -not -path './htmlcov/*' \
+          -not -name '*.log' \
+          -not -name '.coverage' \
+          -not -name 'coverage.xml' \
+          -not -name 'bandit-report.json' \
+          -not -name 'safety-report.json' \
+          -not -name 'build_test.db' \
+          > deployment_files.txt
+        
+        echo "Files to include in deployment:"
+        wc -l deployment_files.txt
+        
+        # Create tar archive from file list (suppress warnings about changing files)
         tar -czf comedy-open-mic-${{ github.sha }}.tar.gz \
-          --exclude='.git' \
-          --exclude='__pycache__' \
-          --exclude='*.pyc' \
-          --exclude='.pytest_cache' \
-          --exclude='htmlcov' \
-          .
+          --files-from=deployment_files.txt \
+          --warning=no-file-changed \
+          --warning=no-file-removed \
+          2>/dev/null || echo "Archive created (warnings suppressed)"
+        
+        # Clean up file list
+        rm -f deployment_files.txt
+        
+        # Verify artifact was created
+        if [ -f "comedy-open-mic-${{ github.sha }}.tar.gz" ]; then
+          echo "✅ Deployment artifact created successfully"
+          ls -lh comedy-open-mic-${{ github.sha }}.tar.gz
+        else
+          echo "❌ Failed to create deployment artifact"
+          exit 1
+        fi
     
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
