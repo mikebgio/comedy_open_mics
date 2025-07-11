@@ -380,71 +380,103 @@ function initializeGoogleMaps() {
         return;
     }
     
-    // Create the classic autocomplete (still supported)
-    autocomplete = new google.maps.places.Autocomplete(addressField, {
-        types: ['address'],
-        componentRestrictions: { country: ['us', 'ca'] }
-    });
+    console.log('Address field found:', addressField);
+    console.log('Google Maps Places available:', typeof google.maps.places);
     
-    // Listen for place selection
-    autocomplete.addListener('place_changed', function() {
-        const place = autocomplete.getPlace();
-        console.log('Place changed:', place);
+    // Test if autocomplete constructor is available
+    try {
+        // Create the classic autocomplete (still supported)
+        autocomplete = new google.maps.places.Autocomplete(addressField, {
+            types: ['address'],
+            componentRestrictions: { country: ['us', 'ca'] }
+        });
         
-        if (!place.geometry) {
-            console.log("No details available for selected place");
-            return;
-        }
+        console.log('Autocomplete object created:', autocomplete);
+        
+        // Listen for place selection
+        autocomplete.addListener('place_changed', function() {
+            const place = autocomplete.getPlace();
+            console.log('Place changed:', place);
+            
+            if (!place.geometry) {
+                console.log("No details available for selected place");
+                return;
+            }
 
-        const selectedAddress = place.formatted_address || place.name;
-        console.log('Selected address:', selectedAddress);
-        
-        // Set the address field value
-        addressField.value = selectedAddress;
+            const selectedAddress = place.formatted_address || place.name;
+            console.log('Selected address:', selectedAddress);
+            
+            // Set the address field value
+            addressField.value = selectedAddress;
 
-        // Get timezone from coordinates
-        getTimezoneFromCoordinates(
-            place.geometry.location.lat(),
-            place.geometry.location.lng(),
-            selectedAddress
-        );
-    });
+            // Get timezone from coordinates
+            getTimezoneFromCoordinates(
+                place.geometry.location.lat(),
+                place.geometry.location.lng(),
+                selectedAddress
+            );
+        });
+        
+        console.log('Autocomplete initialized successfully');
+        
+        // Test autocomplete by triggering focus
+        addressField.addEventListener('focus', () => {
+            console.log('Address field focused, autocomplete should be active');
+        });
+        
+    } catch (error) {
+        console.error('Error initializing autocomplete:', error);
+    }
     
-    console.log('Autocomplete initialized successfully');
-    
-    // Apply dark theme styling
-    const style = document.createElement('style');
-    style.textContent = `
-        .pac-container {
-            background-color: #343a40 !important;
-            border-color: #495057 !important;
-        }
-        
-        .pac-item {
-            background-color: #343a40 !important;
-            color: #fff !important;
-            border-color: #495057 !important;
-        }
-        
-        .pac-item:hover {
-            background-color: #495057 !important;
-            color: #fff !important;
-        }
-        
-        .pac-item-selected {
-            background-color: #495057 !important;
-            color: #fff !important;
-        }
-        
-        .pac-item-query {
-            color: #fff !important;
-        }
-        
-        .pac-matched {
-            color: #80bdff !important;
-        }
-    `;
-    document.head.appendChild(style);
+    // Apply dark theme styling - ensure it's added after autocomplete is ready
+    setTimeout(() => {
+        const style = document.createElement('style');
+        style.textContent = `
+            .pac-container {
+                background-color: #343a40 !important;
+                border: 1px solid #495057 !important;
+                border-radius: 0.375rem !important;
+                z-index: 9999 !important;
+            }
+            
+            .pac-item {
+                background-color: #343a40 !important;
+                color: #fff !important;
+                border-top: 1px solid #495057 !important;
+                padding: 8px 12px !important;
+                cursor: pointer !important;
+            }
+            
+            .pac-item:first-child {
+                border-top: none !important;
+            }
+            
+            .pac-item:hover {
+                background-color: #495057 !important;
+                color: #fff !important;
+            }
+            
+            .pac-item-selected {
+                background-color: #495057 !important;
+                color: #fff !important;
+            }
+            
+            .pac-item-query {
+                color: #fff !important;
+                font-size: 14px !important;
+            }
+            
+            .pac-matched {
+                color: #80bdff !important;
+                font-weight: bold !important;
+            }
+            
+            .pac-icon {
+                background-color: #495057 !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }, 500);
 }
 
 function getTimezoneFromCoordinates(lat, lng, address) {
@@ -617,11 +649,16 @@ function loadGoogleMapsAPI() {
         window.initializeGoogleMaps = initializeGoogleMaps;
         
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async&callback=initializeGoogleMaps`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initializeGoogleMaps`;
         script.async = true;
         script.defer = true;
         script.onload = function() {
             console.log('Google Maps API loaded successfully');
+            // Double check that places library is loaded
+            setTimeout(() => {
+                console.log('Places library check:', typeof google.maps.places);
+                console.log('Autocomplete check:', typeof google.maps.places.Autocomplete);
+            }, 100);
         };
         script.onerror = function() {
             console.error('Failed to load Google Maps API - network or API key issue');
