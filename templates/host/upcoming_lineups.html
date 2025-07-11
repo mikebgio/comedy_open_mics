@@ -60,7 +60,7 @@
                                             <div class="list-group-item px-0 py-2">
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <div>
-                                                        <span class="fw-bold">{{ signup.comedian.full_name() }}</span>
+                                                        <span class="fw-bold">{{ signup.comedian.full_name }}</span>
                                                         {% if signup.notes %}
                                                             <br><small class="text-muted">{{ signup.notes[:50] }}{% if signup.notes|length > 50 %}...{% endif %}</small>
                                                         {% endif %}
