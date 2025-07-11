@@ -1,36 +1,28 @@
-from datetime import date
-from datetime import datetime
-from datetime import timedelta
-from urllib.parse import urljoin
-from urllib.parse import urlparse
+from datetime import date, datetime, timedelta
+from urllib.parse import urljoin, urlparse
 
-from flask import flash
-from flask import jsonify
-from flask import redirect
-from flask import render_template
-from flask import request
-from flask import url_for
-from flask_login import current_user
-from flask_login import login_required
-from flask_login import login_user
-from flask_login import logout_user
+from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, login_user, logout_user
 
-from app import app
-from app import db
-from forms import CancellationForm
-from forms import EventForm
-from forms import InstanceHostForm
-from forms import LoginForm
-from forms import RegistrationForm
-from forms import ShowSettingsForm
-from forms import SignupForm
-from models import Show
-from models import ShowHost
-from models import ShowInstance
-from models import ShowInstanceHost
-from models import ShowRunner
-from models import Signup
-from models import User
+from app import app, db
+from forms import (
+    CancellationForm,
+    EventForm,
+    InstanceHostForm,
+    LoginForm,
+    RegistrationForm,
+    ShowSettingsForm,
+    SignupForm,
+)
+from models import (
+    Show,
+    ShowHost,
+    ShowInstance,
+    ShowInstanceHost,
+    ShowRunner,
+    Signup,
+    User,
+)
 
 
 def is_safe_url(target):
@@ -222,8 +214,7 @@ def upcoming_lineups(show_id):
         return redirect(url_for("host_dashboard"))
 
     # Get upcoming instances (next 10 instances)
-    from datetime import date
-    from datetime import timedelta
+    from datetime import date, timedelta
 
     upcoming_instances = (
         ShowInstance.query.filter(ShowInstance.show_id == show_id)
@@ -791,8 +782,7 @@ def signup_for_event(event_id):
 
     if form.validate_on_submit():
         # Check if signups are still open
-        from datetime import datetime
-        from datetime import timedelta
+        from datetime import datetime, timedelta
 
         show_datetime = datetime.combine(instance.instance_date, instance.start_time)
         signup_deadline = show_datetime - timedelta(
@@ -881,8 +871,7 @@ def api_signup_for_event(event_id):
         )
 
     # Check if signups are still open
-    from datetime import datetime
-    from datetime import timedelta
+    from datetime import datetime, timedelta
 
     show_datetime = datetime.combine(instance.instance_date, instance.start_time)
     signup_deadline = show_datetime - timedelta(
