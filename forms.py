@@ -2,6 +2,7 @@ import re
 
 from flask_wtf import FlaskForm
 from wtforms import (
+    BooleanField,
     DateField,
     IntegerField,
     PasswordField,
@@ -16,6 +17,7 @@ from wtforms.validators import (
     EqualTo,
     Length,
     NumberRange,
+    Optional,
     Regexp,
     ValidationError,
 )
@@ -100,6 +102,8 @@ class EventForm(FlaskForm):
         "Signup Deadline (hours before)",
         validators=[DataRequired(), NumberRange(min=0, max=72)],
     )
+    show_host_info = BooleanField("Show host information publicly", default=True)
+    show_owner_info = BooleanField("Show owner information publicly", default=False)
 
 
 class SignupForm(FlaskForm):
@@ -109,3 +113,43 @@ class SignupForm(FlaskForm):
 class CancellationForm(FlaskForm):
     cancelled_date = DateField("Date to Cancel", validators=[DataRequired()])
     reason = StringField("Reason (Optional)", validators=[Length(max=200)])
+
+
+class ShowSettingsForm(FlaskForm):
+    """Form for editing show settings including host management"""
+
+    default_host_id = SelectField("Default Host", coerce=int)
+    show_host_info = BooleanField("Show host information publicly", default=True)
+    show_owner_info = BooleanField("Show owner information publicly", default=False)
+
+    def __init__(self, show=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if show:
+            # Populate default host choices with users who can host this show
+            from models import User
+
+            potential_hosts = (
+                User.query.all()
+            )  # Could be filtered to show runners/hosts
+            self.default_host_id.choices = [(0, "No default host")] + [
+                (user.id, user.full_name) for user in potential_hosts
+            ]
+
+
+class InstanceHostForm(FlaskForm):
+    """Form for assigning hosts to specific show instances"""
+
+    host_id = SelectField("Instance Host", coerce=int, validators=[DataRequired()])
+
+    def __init__(self, show=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if show:
+            # Populate host choices with users who can host this show
+            from models import User
+
+            potential_hosts = (
+                User.query.all()
+            )  # Could be filtered to show runners/hosts
+            self.host_id.choices = [
+                (user.id, user.full_name) for user in potential_hosts
+            ]

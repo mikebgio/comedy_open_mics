@@ -49,29 +49,43 @@
                                                 {% else %}
                                                     <span class="badge bg-secondary me-2">TBD</span>
                                                 {% endif %}
-                                                {{ signup.comedian.full_name }}
+                                                {% if signup.comedian %}
+                                                    {{ signup.comedian.full_name }}
+                                                {% else %}
+                                                    Guest Comedian
+                                                {% endif %}
                                             </h6>
                                             {% if signup.notes %}
                                                 <small class="text-muted">{{ signup.notes }}</small>
                                             {% endif %}
                                         </div>
                                     </div>
-                                    <div>
-                                        <small class="text-muted">
+                                    <div class="d-flex align-items-center">
+                                        <small class="text-muted me-3">
                                             Signed up: {{ signup.signup_time.strftime('%I:%M %p') }}
                                         </small>
+                                        <form method="POST" action="{{ url_for('cancel_signup', signup_id=signup.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="return confirm('Remove this comedian from the lineup?')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
                     
-                    <div class="mt-3">
-                        <button id="save-order" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>Save Order
-                        </button>
-                        <div id="save-status" class="d-inline-block ms-2"></div>
-                    </div>
+                    <form method="POST" action="{{ url_for('manage_lineup', event_id=event.id) }}">
+                        <div class="mt-3">
+                            {% for signup in signups %}
+                                <input type="hidden" name="position_{{ signup.id }}" value="{{ signup.position or '' }}">
+                            {% endfor %}
+                            <button type="submit" name="update_positions" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>Save Order
+                            </button>
+                        </div>
+                    </form>
                 {% else %}
                     <div class="text-center text-muted py-4">
                         <i class="fas fa-user-times fa-3x mb-3"></i>
@@ -91,21 +105,21 @@
             </div>
             <div class="card-body">
                 <p class="mb-1">
-                    <i class="fas fa-map-marker-alt text-danger me-2"></i>{{ event.venue }}
+                    <i class="fas fa-map-marker-alt text-danger me-2"></i>{{ event.show.venue }}
                 </p>
                 <p class="mb-1">
-                    <i class="fas fa-location-arrow text-warning me-2"></i>{{ event.address }}
+                    <i class="fas fa-location-arrow text-warning me-2"></i>{{ event.show.address }}
                 </p>
                 <p class="mb-1">
-                    <i class="fas fa-clock text-info me-2"></i>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                    <i class="fas fa-clock text-info me-2"></i>{{ event.start_time.strftime('%I:%M %p') }}{% if event.end_time %} - {{ event.end_time.strftime('%I:%M %p') }}{% endif %}
                 </p>
                 <p class="mb-3">
                     <i class="fas fa-users text-success me-2"></i>{{ signups|length }} / {{ event.max_signups }} spots filled
                 </p>
                 
-                {% if event.description %}
+                {% if event.show.description %}
                     <h6>Description</h6>
-                    <p class="text-muted">{{ event.description }}</p>
+                    <p class="text-muted">{{ event.show.description }}</p>
                 {% endif %}
                 
                 <div class="progress mb-2">
@@ -121,14 +135,32 @@
         <div class="card mt-3">
             <div class="card-header">
                 <h6 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Add Comedian
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('manage_lineup', event_id=event.id) }}">
+                    <div class="mb-3">
+                        <label for="comedian_name" class="form-label">Comedian Name/Username</label>
+                        <input type="text" class="form-control" id="comedian_name" name="comedian_name" 
+                               placeholder="Enter username or full name" required>
+                        <div class="form-text">Enter registered username or any name for walk-ins</div>
+                    </div>
+                    <button type="submit" name="add_comedian" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-2"></i>Add to Lineup
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
                     <i class="fas fa-tools me-2"></i>Quick Actions
                 </h6>
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('random_select', event_id=event.id) }}" class="btn btn-outline-warning btn-sm">
-                        <i class="fas fa-random me-2"></i>Select Random Comedian
-                    </a>
                     <a href="{{ url_for('cancel_event', event_id=event.id) }}" class="btn btn-outline-danger btn-sm">
                         <i class="fas fa-ban me-2"></i>Cancel This Date
                     </a>

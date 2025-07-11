@@ -14,9 +14,9 @@
             </a>
         {% endif %}
     </div>
-    <a href="{{ url_for('create_event') }}" class="btn btn-primary">
+    <button onclick="showEventModal()" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>Create New Event
-    </a>
+    </button>
 </div>
 
 <div class="row">
@@ -57,22 +57,14 @@
                             </div>
                             <div class="card-footer">
                                 <div class="d-flex gap-2 flex-wrap">
-                                    <a href="{{ url_for('manage_lineup', event_id=event.id) }}" 
+                                    <a href="{{ url_for('upcoming_lineups', show_id=event.id) }}" 
                                        class="btn btn-sm btn-primary">
-                                        <i class="fas fa-list me-1"></i>Manage Lineup
+                                        <i class="fas fa-list me-1"></i>View Upcoming Lineups
                                     </a>
-                                    <a href="{{ url_for('event_info', event_id=event.id) }}" 
-                                       class="btn btn-sm btn-outline-info">
-                                        <i class="fas fa-info me-1"></i>View Info
-                                    </a>
-                                    <a href="{{ url_for('live_lineup', event_id=event.id) }}" 
-                                       class="btn btn-sm btn-outline-success">
-                                        <i class="fas fa-eye me-1"></i>Live Lineup
-                                    </a>
-                                    <a href="{{ url_for('cancel_event', event_id=event.id) }}" 
-                                       class="btn btn-sm btn-outline-warning">
-                                        <i class="fas fa-ban me-1"></i>Cancel Date
-                                    </a>
+                                    <button onclick="showEventModal({{ event.id }})" 
+                                            class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-edit me-1"></i>Edit Event
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -84,11 +76,283 @@
                 <i class="fas fa-microphone-slash fa-3x text-muted mb-3"></i>
                 <h4 class="text-muted">No Events Yet</h4>
                 <p class="text-muted">Create your first open mic event to get started!</p>
-                <a href="{{ url_for('create_event') }}" class="btn btn-primary btn-lg">
+                <button onclick="showEventModal()" class="btn btn-primary btn-lg">
                     <i class="fas fa-plus me-2"></i>Create Your First Event
-                </a>
+                </button>
             </div>
         {% endif %}
     </div>
 </div>
+
+<!-- Event Creation/Editing Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventModalTitle">Create New Event</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="eventName" class="form-label">Event Name</label>
+                                <input type="text" class="form-control" id="eventName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="eventVenue" class="form-label">Venue</label>
+                                <input type="text" class="form-control" id="eventVenue" name="venue" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="eventAddress" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="eventAddress" name="address" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="eventDayOfWeek" class="form-label">Day of Week</label>
+                                <select class="form-select" id="eventDayOfWeek" name="day_of_week" required>
+                                    <option value="">Select Day</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                    <option value="Saturday">Saturday</option>
+                                    <option value="Sunday">Sunday</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="eventStartTime" class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="eventStartTime" name="start_time" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="eventEndTime" class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="eventEndTime" name="end_time">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="eventDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="eventDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="eventMaxSignups" class="form-label">Maximum Signups</label>
+                                <input type="number" class="form-control" id="eventMaxSignups" name="max_signups" min="1" max="50" value="20" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="eventSignupDeadline" class="form-label">Signup Deadline (hours before)</label>
+                                <input type="number" class="form-control" id="eventSignupDeadline" name="signup_deadline_hours" min="0" max="72" value="2" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="eventShowHostInfo" name="show_host_info" checked>
+                                <label class="form-check-label" for="eventShowHostInfo">
+                                    Show host information publicly
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="eventShowOwnerInfo" name="show_owner_info">
+                                <label class="form-check-label" for="eventShowOwnerInfo">
+                                    Show owner information publicly
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEventBtn">Create Event</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+let hostCurrentEventId = null;
+let hostOriginalEventData = {};
+let hostHasChanges = false;
+
+function showEventModal(eventId = null) {
+    hostCurrentEventId = eventId;
+    hostHasChanges = false;
+    
+    if (eventId) {
+        // Edit mode
+        document.getElementById('eventModalTitle').textContent = 'Edit Event';
+        document.getElementById('saveEventBtn').textContent = 'Update Event';
+        document.getElementById('saveEventBtn').disabled = true;
+        
+        // Load event data
+        fetch(`/api/show/${eventId}`)
+            .then(response => response.json())
+            .then(data => {
+                hostOriginalEventData = data;
+                populateEventForm(data);
+                setupChangeTracking();
+            })
+            .catch(error => {
+                console.error('Error loading event:', error);
+                alert('Failed to load event data');
+            });
+    } else {
+        // Create mode
+        document.getElementById('eventModalTitle').textContent = 'Create New Event';
+        document.getElementById('saveEventBtn').textContent = 'Create Event';
+        document.getElementById('saveEventBtn').disabled = false;
+        clearEventForm();
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+    modal.show();
+}
+
+function populateEventForm(data) {
+    document.getElementById('eventName').value = data.name || '';
+    document.getElementById('eventVenue').value = data.venue || '';
+    document.getElementById('eventAddress').value = data.address || '';
+    document.getElementById('eventDayOfWeek').value = data.day_of_week || '';
+    document.getElementById('eventStartTime').value = data.start_time || '';
+    document.getElementById('eventEndTime').value = data.end_time || '';
+    document.getElementById('eventDescription').value = data.description || '';
+    document.getElementById('eventMaxSignups').value = data.max_signups || 20;
+    document.getElementById('eventSignupDeadline').value = data.signup_deadline_hours || 2;
+    document.getElementById('eventShowHostInfo').checked = data.show_host_info !== false;
+    document.getElementById('eventShowOwnerInfo').checked = data.show_owner_info === true;
+}
+
+function clearEventForm() {
+    document.getElementById('eventForm').reset();
+    document.getElementById('eventMaxSignups').value = 20;
+    document.getElementById('eventSignupDeadline').value = 2;
+    document.getElementById('eventShowHostInfo').checked = true;
+    document.getElementById('eventShowOwnerInfo').checked = false;
+}
+
+function setupChangeTracking() {
+    const inputs = document.querySelectorAll('#eventForm input, #eventForm select, #eventForm textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            checkForChanges();
+        });
+        input.addEventListener('change', function() {
+            checkForChanges();
+        });
+    });
+}
+
+function checkForChanges() {
+    const currentData = getFormData();
+    hostHasChanges = false;
+    
+    for (let key in currentData) {
+        if (currentData[key] !== hostOriginalEventData[key]) {
+            hostHasChanges = true;
+            break;
+        }
+    }
+    
+    document.getElementById('saveEventBtn').disabled = hostCurrentEventId && !hostHasChanges;
+    
+    // Highlight changed fields
+    const inputs = document.querySelectorAll('#eventForm input, #eventForm select, #eventForm textarea');
+    inputs.forEach(input => {
+        const fieldName = input.name;
+        if (hostCurrentEventId && hostOriginalEventData[fieldName] !== undefined) {
+            let currentValue = input.type === 'checkbox' ? input.checked : input.value;
+            let originalValue = hostOriginalEventData[fieldName];
+            
+            if (currentValue !== originalValue) {
+                input.classList.add('border-warning', 'bg-warning-subtle');
+            } else {
+                input.classList.remove('border-warning', 'bg-warning-subtle');
+            }
+        }
+    });
+}
+
+function getFormData() {
+    return {
+        name: document.getElementById('eventName').value,
+        venue: document.getElementById('eventVenue').value,
+        address: document.getElementById('eventAddress').value,
+        day_of_week: document.getElementById('eventDayOfWeek').value,
+        start_time: document.getElementById('eventStartTime').value,
+        end_time: document.getElementById('eventEndTime').value,
+        description: document.getElementById('eventDescription').value,
+        max_signups: parseInt(document.getElementById('eventMaxSignups').value),
+        signup_deadline_hours: parseInt(document.getElementById('eventSignupDeadline').value),
+        show_host_info: document.getElementById('eventShowHostInfo').checked,
+        show_owner_info: document.getElementById('eventShowOwnerInfo').checked
+    };
+}
+
+document.getElementById('saveEventBtn').addEventListener('click', function() {
+    const formData = getFormData();
+    const button = this;
+    
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + 
+                      (hostCurrentEventId ? 'Updating...' : 'Creating...');
+    
+    const url = hostCurrentEventId ? `/api/show/${hostCurrentEventId}` : '/api/show';
+    const method = hostCurrentEventId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.error, 'error');
+            button.disabled = false;
+            button.innerHTML = hostCurrentEventId ? 'Update Event' : 'Create Event';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to save event. Please try again.', 'error');
+        button.disabled = false;
+        button.innerHTML = hostCurrentEventId ? 'Update Event' : 'Create Event';
+    });
+});
+
+
+</script>
 {% endblock %}

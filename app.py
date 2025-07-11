@@ -61,4 +61,4 @@ def inject_current_year():
 
 
 # Import routes to register them with the app
-import routes_simple  # noqa: F401
+import routes  # noqa: F401
