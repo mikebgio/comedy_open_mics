@@ -1,5 +1,6 @@
 import logging
 import os
+import pytz
 from datetime import datetime
 
 from flask import Flask
@@ -23,8 +24,14 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Configure session settings for better cross-tab compatibility
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
@@ -36,7 +43,7 @@ db.init_app(app)
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "login"
+login_manager.login_view = "replit_auth.login"
 login_manager.login_message = "Please log in to access this page."
 
 
@@ -44,7 +51,7 @@ login_manager.login_message = "Please log in to access this page."
 def load_user(user_id):
     from models import User
 
-    return User.query.get(int(user_id))
+    return User.query.get(user_id)
 
 
 with app.app_context():
@@ -58,6 +65,32 @@ with app.app_context():
 @app.context_processor
 def inject_current_year():
     return {"current_year": datetime.now().year}
+
+
+# Add timezone utility functions
+def get_user_timezone():
+    """Get user's timezone (default to EST for Boston comedy scene)"""
+    return pytz.timezone("America/New_York")
+
+
+def utc_to_local(utc_dt, timezone_str="America/New_York"):
+    """Convert UTC datetime to local timezone"""
+    if utc_dt is None:
+        return None
+    if utc_dt.tzinfo is None:
+        utc_dt = pytz.utc.localize(utc_dt)
+    local_tz = pytz.timezone(timezone_str)
+    return utc_dt.astimezone(local_tz)
+
+
+def local_to_utc(local_dt, timezone_str="America/New_York"):
+    """Convert local datetime to UTC"""
+    if local_dt is None:
+        return None
+    local_tz = pytz.timezone(timezone_str)
+    if local_dt.tzinfo is None:
+        local_dt = local_tz.localize(local_dt)
+    return local_dt.astimezone(pytz.utc)
 
 
 # Import routes to register them with the app

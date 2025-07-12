@@ -111,7 +111,13 @@
                     
                     <div class="mb-3">
                         <label for="eventAddress" class="form-label">Address</label>
-                        <input type="text" class="form-control" id="eventAddress" name="address" required>
+                        <input type="text" class="form-control" id="eventAddress" name="address" required placeholder="Start typing an address..." style="background-color: #343a40; color: #fff; border-color: #495057;">
+                        <div id="addressAutocomplete" style="display: none;"></div>
+                        <input type="hidden" id="eventTimezone" name="timezone" value="">
+                        <small class="form-text text-muted">
+                            <span id="addressHelp">Select from suggestions for accurate timezone detection</span>
+                            <br><small class="text-warning" id="debugInfo" style="font-size: 0.8em;"></small>
+                        </small>
                     </div>
                     
                     <div class="row">
@@ -134,12 +140,14 @@
                             <div class="mb-3">
                                 <label for="eventStartTime" class="form-label">Start Time</label>
                                 <input type="time" class="form-control" id="eventStartTime" name="start_time" required>
+                                <small class="form-text text-muted" id="startTimeHelp">Select an address first to determine timezone</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="eventEndTime" class="form-label">End Time</label>
                                 <input type="time" class="form-control" id="eventEndTime" name="end_time">
+                                <small class="form-text text-muted" id="endTimeHelp">Select an address first to determine timezone</small>
                             </div>
                         </div>
                     </div>
@@ -150,19 +158,52 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="eventMaxSignups" class="form-label">Maximum Signups</label>
                                 <input type="number" class="form-control" id="eventMaxSignups" name="max_signups" min="1" max="50" value="20" required>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Signup Timing Section -->
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="eventSignupDeadline" class="form-label">Signup Deadline (hours before)</label>
-                                <input type="number" class="form-control" id="eventSignupDeadline" name="signup_deadline_hours" min="0" max="72" value="2" required>
+                                <label class="form-label">Signups Open</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="eventSignupsOpenValue" name="signups_open_value" min="0" max="525600" value="2" required>
+                                    <select class="form-select" id="eventSignupsOpenUnit" name="signups_open_unit" required>
+                                        <option value="minutes">Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days" selected>Days</option>
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                    </select>
+                                </div>
+                                <small class="form-text text-muted">How far in advance comedians can sign up</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Signups Close</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="eventSignupsClosedValue" name="signups_closed_value" min="-1440" max="525600" value="0" required>
+                                    <select class="form-select" id="eventSignupsClosedUnit" name="signups_closed_unit" required>
+                                        <option value="minutes" selected>Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                    </select>
+                                </div>
+                                <small class="form-text text-muted">When signups close (negative = minutes into show)</small>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Hidden field for backward compatibility -->
+                    <input type="hidden" id="eventSignupDeadlineHours" name="signup_deadline_hours" value="2">
                     
                     <div class="row">
                         <div class="col-md-6">
@@ -242,7 +283,22 @@ function populateEventForm(data) {
     document.getElementById('eventEndTime').value = data.end_time || '';
     document.getElementById('eventDescription').value = data.description || '';
     document.getElementById('eventMaxSignups').value = data.max_signups || 20;
-    document.getElementById('eventSignupDeadline').value = data.signup_deadline_hours || 2;
+    
+    // Handle signup timing fields
+    if (data.signups_open !== undefined) {
+        const openValue = data.signups_open_value || 2;
+        const openUnit = data.signups_open_unit || 'days';
+        document.getElementById('eventSignupsOpenValue').value = openValue;
+        document.getElementById('eventSignupsOpenUnit').value = openUnit;
+    }
+    
+    if (data.signups_closed !== undefined) {
+        const closedValue = data.signups_closed_value || 0;
+        const closedUnit = data.signups_closed_unit || 'minutes';
+        document.getElementById('eventSignupsClosedValue').value = closedValue;
+        document.getElementById('eventSignupsClosedUnit').value = closedUnit;
+    }
+    
     document.getElementById('eventShowHostInfo').checked = data.show_host_info !== false;
     document.getElementById('eventShowOwnerInfo').checked = data.show_owner_info === true;
 }
@@ -250,7 +306,13 @@ function populateEventForm(data) {
 function clearEventForm() {
     document.getElementById('eventForm').reset();
     document.getElementById('eventMaxSignups').value = 20;
-    document.getElementById('eventSignupDeadline').value = 2;
+    
+    // Set default signup timing values
+    document.getElementById('eventSignupsOpenValue').value = 2;
+    document.getElementById('eventSignupsOpenUnit').value = 'days';
+    document.getElementById('eventSignupsClosedValue').value = 0;
+    document.getElementById('eventSignupsClosedUnit').value = 'minutes';
+    
     document.getElementById('eventShowHostInfo').checked = true;
     document.getElementById('eventShowOwnerInfo').checked = false;
 }
@@ -298,16 +360,26 @@ function checkForChanges() {
 }
 
 function getFormData() {
+    const addressField = document.getElementById('eventAddress');
+    const selectedAddress = addressField.value.trim();
+    
+    console.log('Form address value:', selectedAddress);
+    
     return {
         name: document.getElementById('eventName').value,
         venue: document.getElementById('eventVenue').value,
-        address: document.getElementById('eventAddress').value,
+        address: selectedAddress,
+        timezone: document.getElementById('eventTimezone').value || 'America/New_York',
         day_of_week: document.getElementById('eventDayOfWeek').value,
         start_time: document.getElementById('eventStartTime').value,
         end_time: document.getElementById('eventEndTime').value,
         description: document.getElementById('eventDescription').value,
         max_signups: parseInt(document.getElementById('eventMaxSignups').value),
-        signup_deadline_hours: parseInt(document.getElementById('eventSignupDeadline').value),
+        signups_open_value: parseInt(document.getElementById('eventSignupsOpenValue').value),
+        signups_open_unit: document.getElementById('eventSignupsOpenUnit').value,
+        signups_closed_value: parseInt(document.getElementById('eventSignupsClosedValue').value),
+        signups_closed_unit: document.getElementById('eventSignupsClosedUnit').value,
+        signup_deadline_hours: parseInt(document.getElementById('eventSignupDeadlineHours').value) || 2,
         show_host_info: document.getElementById('eventShowHostInfo').checked,
         show_owner_info: document.getElementById('eventShowOwnerInfo').checked
     };
@@ -353,6 +425,339 @@ document.getElementById('saveEventBtn').addEventListener('click', function() {
     });
 });
 
+// Google Maps API initialization
+let autocomplete;
+let selectedTimezone = '';
+
+function initializeGoogleMaps() {
+    console.log('Initializing Google Maps Autocomplete...');
+    
+    const addressField = document.getElementById('eventAddress');
+    if (!addressField) {
+        console.error('Address field not found!');
+        return;
+    }
+    
+    console.log('Address field found:', addressField);
+    console.log('Google Maps Places available:', typeof google.maps.places);
+    
+    // Test if autocomplete constructor is available
+    try {
+        // Create the classic autocomplete (still supported)
+        autocomplete = new google.maps.places.Autocomplete(addressField, {
+            types: ['address'],
+            componentRestrictions: { country: ['us', 'ca'] }
+        });
+        
+        console.log('Autocomplete object created:', autocomplete);
+        
+        // Listen for place selection
+        autocomplete.addListener('place_changed', function() {
+            const place = autocomplete.getPlace();
+            console.log('Place changed:', place);
+            
+            if (!place.geometry) {
+                console.log("No details available for selected place");
+                return;
+            }
+
+            const selectedAddress = place.formatted_address || place.name;
+            console.log('Selected address:', selectedAddress);
+            
+            // Set the address field value
+            addressField.value = selectedAddress;
+
+            // Get timezone from coordinates
+            getTimezoneFromCoordinates(
+                place.geometry.location.lat(),
+                place.geometry.location.lng(),
+                selectedAddress
+            );
+        });
+        
+        console.log('Autocomplete initialized successfully');
+        
+        // Test autocomplete by triggering focus
+        addressField.addEventListener('focus', () => {
+            console.log('Address field focused, autocomplete should be active');
+        });
+        
+    } catch (error) {
+        console.error('Error initializing autocomplete:', error);
+    }
+    
+    // Apply dark theme styling - ensure it's added after autocomplete is ready
+    setTimeout(() => {
+        const style = document.createElement('style');
+        style.textContent = `
+            .pac-container {
+                background-color: #343a40 !important;
+                border: 1px solid #495057 !important;
+                border-radius: 0.375rem !important;
+                z-index: 9999 !important;
+            }
+            
+            .pac-item {
+                background-color: #343a40 !important;
+                color: #fff !important;
+                border-top: 1px solid #495057 !important;
+                padding: 8px 12px !important;
+                cursor: pointer !important;
+            }
+            
+            .pac-item:first-child {
+                border-top: none !important;
+            }
+            
+            .pac-item:hover {
+                background-color: #495057 !important;
+                color: #fff !important;
+            }
+            
+            .pac-item-selected {
+                background-color: #495057 !important;
+                color: #fff !important;
+            }
+            
+            .pac-item-query {
+                color: #fff !important;
+                font-size: 14px !important;
+            }
+            
+            .pac-matched {
+                color: #80bdff !important;
+                font-weight: bold !important;
+            }
+            
+            .pac-icon {
+                background-color: #495057 !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }, 500);
+}
+
+function getTimezoneFromCoordinates(lat, lng, address) {
+    // Use Google Maps Timezone API for precise timezone detection
+    const timestamp = Math.floor(Date.now() / 1000);
+    const apiKey = '{{ google_maps_api_key }}'; // Will be passed from backend
+    console.log('API Key available:', apiKey ? 'Yes' : 'No', apiKey ? apiKey.substring(0, 10) + '...' : '');
+    console.log('Raw API key from template:', '{{ google_maps_api_key }}');
+    
+    if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+        fetch(`https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${apiKey}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'OK') {
+                    selectedTimezone = data.timeZoneId;
+                    document.getElementById('eventTimezone').value = selectedTimezone;
+                    
+                    // Update time field help text
+                    const timezoneName = getTimezoneDisplayName(selectedTimezone);
+                    document.getElementById('startTimeHelp').textContent = `Time in ${timezoneName}`;
+                    document.getElementById('endTimeHelp').textContent = `Time in ${timezoneName}`;
+                    
+                    console.log(`Timezone detected: ${selectedTimezone} for ${address}`);
+                } else {
+                    console.error('Timezone API error:', data.status);
+                    fallbackTimezoneDetection(address);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching timezone:', error);
+                fallbackTimezoneDetection(address);
+            });
+    } else {
+        // Fallback to simple location-based detection
+        fallbackTimezoneDetection(address);
+    }
+}
+
+function fallbackTimezoneDetection(address) {
+    // Simple state/province detection from address as fallback
+    const timezonesByLocation = {
+        // US States approximate timezone mapping
+        'California': 'America/Los_Angeles',
+        'Oregon': 'America/Los_Angeles', 
+        'Washington': 'America/Los_Angeles',
+        'Nevada': 'America/Los_Angeles',
+        'Arizona': 'America/Phoenix',
+        'Utah': 'America/Denver',
+        'Colorado': 'America/Denver',
+        'New Mexico': 'America/Denver',
+        'Montana': 'America/Denver',
+        'Wyoming': 'America/Denver',
+        'Idaho': 'America/Denver',
+        'North Dakota': 'America/Chicago',
+        'South Dakota': 'America/Chicago',
+        'Nebraska': 'America/Chicago',
+        'Kansas': 'America/Chicago',
+        'Oklahoma': 'America/Chicago',
+        'Texas': 'America/Chicago',
+        'Minnesota': 'America/Chicago',
+        'Iowa': 'America/Chicago',
+        'Missouri': 'America/Chicago',
+        'Arkansas': 'America/Chicago',
+        'Louisiana': 'America/Chicago',
+        'Wisconsin': 'America/Chicago',
+        'Illinois': 'America/Chicago',
+        'Mississippi': 'America/Chicago',
+        'Alabama': 'America/Chicago',
+        'Tennessee': 'America/Chicago',
+        'Kentucky': 'America/New_York',
+        'Indiana': 'America/New_York',
+        'Michigan': 'America/New_York',
+        'Ohio': 'America/New_York',
+        'West Virginia': 'America/New_York',
+        'Virginia': 'America/New_York',
+        'North Carolina': 'America/New_York',
+        'South Carolina': 'America/New_York',
+        'Georgia': 'America/New_York',
+        'Florida': 'America/New_York',
+        'Pennsylvania': 'America/New_York',
+        'New York': 'America/New_York',
+        'Vermont': 'America/New_York',
+        'New Hampshire': 'America/New_York',
+        'Maine': 'America/New_York',
+        'Massachusetts': 'America/New_York',
+        'Rhode Island': 'America/New_York',
+        'Connecticut': 'America/New_York',
+        'New Jersey': 'America/New_York',
+        'Delaware': 'America/New_York',
+        'Maryland': 'America/New_York',
+        'Washington DC': 'America/New_York',
+        'Alaska': 'America/Anchorage',
+        'Hawaii': 'Pacific/Honolulu',
+        // Canada provinces
+        'British Columbia': 'America/Vancouver',
+        'Alberta': 'America/Edmonton',
+        'Saskatchewan': 'America/Regina',
+        'Manitoba': 'America/Winnipeg',
+        'Ontario': 'America/Toronto',
+        'Quebec': 'America/Montreal',
+        'New Brunswick': 'America/Moncton',
+        'Nova Scotia': 'America/Halifax',
+        'Prince Edward Island': 'America/Halifax',
+        'Newfoundland': 'America/St_Johns'
+    };
+
+    // Simple state/province detection from address
+    let detectedTimezone = 'America/New_York'; // Default fallback
+    
+    for (const [location, timezone] of Object.entries(timezonesByLocation)) {
+        if (address.includes(location)) {
+            detectedTimezone = timezone;
+            break;
+        }
+    }
+
+    selectedTimezone = detectedTimezone;
+    document.getElementById('eventTimezone').value = selectedTimezone;
+    
+    // Update time field help text
+    const timezoneName = getTimezoneDisplayName(selectedTimezone);
+    document.getElementById('startTimeHelp').textContent = `Time in ${timezoneName}`;
+    document.getElementById('endTimeHelp').textContent = `Time in ${timezoneName}`;
+    
+    console.log(`Timezone detected: ${selectedTimezone} for ${address}`);
+}
+
+function getTimezoneDisplayName(timezoneId) {
+    const timezoneNames = {
+        'America/New_York': 'Eastern Time (ET)',
+        'America/Chicago': 'Central Time (CT)',
+        'America/Denver': 'Mountain Time (MT)',
+        'America/Los_Angeles': 'Pacific Time (PT)',
+        'America/Phoenix': 'Mountain Standard Time (MST)',
+        'America/Anchorage': 'Alaska Time (AKT)',
+        'Pacific/Honolulu': 'Hawaii Time (HST)',
+        'America/Toronto': 'Eastern Time (ET)',
+        'America/Vancouver': 'Pacific Time (PT)',
+        'America/Montreal': 'Eastern Time (ET)',
+        'America/Edmonton': 'Mountain Time (MT)',
+        'America/Regina': 'Central Time (CT)',
+        'America/Winnipeg': 'Central Time (CT)',
+        'America/Moncton': 'Atlantic Time (AT)',
+        'America/Halifax': 'Atlantic Time (AT)',
+        'America/St_Johns': 'Newfoundland Time (NT)'
+    };
+    
+    return timezoneNames[timezoneId] || timezoneId.replace('_', ' ').replace('America/', '');
+}
+
+// Load Google Maps API with Places library
+function loadGoogleMapsAPI() {
+    if (typeof google !== 'undefined' && google.maps) {
+        initializeGoogleMaps();
+        return;
+    }
+    
+    const apiKey = '{{ google_maps_api_key }}';
+    console.log('Loading Google Maps API with key:', apiKey ? apiKey.substring(0, 10) + '...' : 'Not provided');
+    
+    if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY' && apiKey.trim() !== '') {
+        // Check if Google Maps is already loaded
+        if (window.google && window.google.maps) {
+            console.log('Google Maps already loaded, initializing autocomplete...');
+            initializeGoogleMaps();
+            return;
+        }
+        
+        // Set up global callback for Google Maps API
+        window.initializeGoogleMaps = initializeGoogleMaps;
+        
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initializeGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        script.onload = function() {
+            console.log('Google Maps API loaded successfully');
+            // Double check that places library is loaded
+            setTimeout(() => {
+                console.log('Places library check:', typeof google.maps.places);
+                console.log('Autocomplete check:', typeof google.maps.places.Autocomplete);
+            }, 100);
+        };
+        script.onerror = function() {
+            console.error('Failed to load Google Maps API - network or API key issue');
+            document.getElementById('debugInfo').textContent = 'Maps API failed to load';
+            setupFallbackAddressDetection();
+        };
+        document.head.appendChild(script);
+        console.log('Google Maps API script added to page with key:', apiKey.substring(0, 10) + '...');
+    } else {
+        console.log('Google Maps API key not available - using fallback address detection');
+        document.getElementById('debugInfo').textContent = 'No API key - using fallback';
+        setupFallbackAddressDetection();
+    }
+}
+
+function setupFallbackAddressDetection() {
+    // Set up fallback address detection
+    const addressField = document.getElementById('eventAddress');
+    addressField.addEventListener('blur', function() {
+        const address = this.value.trim();
+        if (address) {
+            fallbackTimezoneDetection(address);
+        }
+    });
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add debugging info
+    const debugInfo = document.getElementById('debugInfo');
+    debugInfo.textContent = 'API Key: {% if google_maps_api_key %}Available{% else %}Not Available{% endif %}';
+    
+    // Load Google Maps API when the modal is shown for the first time
+    let apiLoaded = false;
+    document.getElementById('eventModal').addEventListener('shown.bs.modal', function() {
+        if (!apiLoaded) {
+            loadGoogleMapsAPI();
+            apiLoaded = true;
+        }
+    });
+});
 
 </script>
 {% endblock %}

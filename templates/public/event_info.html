@@ -72,10 +72,20 @@
                         </p>
                         {% endif %}
                         
-                        <h6 class="text-primary">Signup Rules</h6>
+                        <h6 class="text-primary">Signup Window</h6>
+                        {% set signup_open_time = event.show.get_signup_open_datetime(event.instance_date) %}
+                        {% set signup_close_time = event.show.get_signup_closed_datetime(event.instance_date) %}
+                        <p class="mb-1">
+                            <i class="fas fa-calendar-check text-success me-2"></i>
+                            Opens: {{ signup_open_time.strftime('%m/%d/%y at %I:%M %p') }}
+                        </p>
                         <p class="mb-1">
                             <i class="fas fa-stopwatch text-danger me-2"></i>
-                            Signup closes {{ event.show.signup_window_after_hours }} hours before the show
+                            Closes: {{ signup_close_time.strftime('%m/%d/%y at %I:%M %p') }}
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-info-circle text-info me-2"></i>
+                            <strong>{{ signup_status.message }}</strong>
                         </p>
                         
                         {% if event.show.description %}
@@ -103,9 +113,15 @@
                                 </button>
                             </form>
                         {% else %}
-                            <button onclick="showSignupModal({{ event.id }})" class="btn btn-success">
-                                <i class="fas fa-plus me-2"></i>Sign Up for This Mic
-                            </button>
+                            {% if signup_status.can_signup %}
+                                <button onclick="showSignupModal({{ event.id }})" class="btn btn-success">
+                                    <i class="fas fa-plus me-2"></i>Sign Up for This Mic
+                                </button>
+                            {% else %}
+                                <button class="btn btn-secondary" disabled title="{{ signup_status.message }}">
+                                    <i class="fas fa-clock me-2"></i>{{ signup_status.message }}
+                                </button>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </div>

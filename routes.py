@@ -1,16 +1,15 @@
+import os
 from datetime import date, datetime, timedelta
 from urllib.parse import urljoin, urlparse
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import flash, jsonify, redirect, render_template, request, url_for, session
+from flask_login import current_user, login_required
 
 from app import app, db
 from forms import (
     CancellationForm,
     EventForm,
     InstanceHostForm,
-    LoginForm,
-    RegistrationForm,
     ShowSettingsForm,
     SignupForm,
 )
@@ -23,6 +22,15 @@ from models import (
     Signup,
     User,
 )
+from replit_auth import make_replit_blueprint, require_login
+
+# Register Replit Auth blueprint
+app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+
+# Make session permanent
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 
 def is_safe_url(target):
@@ -34,54 +42,73 @@ def is_safe_url(target):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
     if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        user = User(
-            username=form.username.data,
-            email=form.email.data.lower(),
-            first_name=form.first_name.data,
-            last_name=form.last_name.data,
+        # Unified dashboard for logged-in users
+        
+        # My Next Set - next event user is signed up for
+        next_signup = (
+            Signup.query.filter_by(comedian_id=current_user.id)
+            .join(ShowInstance)
+            .filter(ShowInstance.instance_date >= date.today())
+            .order_by(ShowInstance.instance_date)
+            .first()
         )
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash("Registration successful! You can now log in.")
-        return redirect(url_for("login"))
+        
+        # My Open Mics - shows owned by user (hide if empty)
+        owned_shows = Show.query.filter_by(owner_id=current_user.id, is_deleted=False).all()
+        
+        # Get upcoming instances for owned shows
+        owned_show_instances = []
+        if owned_shows:
+            owned_show_ids = [show.id for show in owned_shows]
+            owned_show_instances = (
+                ShowInstance.query.filter(
+                    ShowInstance.show_id.in_(owned_show_ids),
+                    ShowInstance.instance_date >= date.today(),
+                    ShowInstance.is_cancelled == False,
+                )
+                .order_by(ShowInstance.instance_date)
+                .limit(5)
+                .all()
+            )
+        
+        # Your Upcoming Performances - user's signups
+        upcoming_performances = (
+            Signup.query.filter_by(comedian_id=current_user.id)
+            .join(ShowInstance)
+            .filter(ShowInstance.instance_date >= date.today())
+            .order_by(ShowInstance.instance_date)
+            .limit(5)
+            .all()
+        )
+        
+        return render_template(
+            "unified_dashboard.html",
+            next_signup=next_signup,
+            owned_shows=owned_shows,
+            owned_show_instances=owned_show_instances,
+            upcoming_performances=upcoming_performances,
+        )
+    else:
+        # Public landing page for non-authenticated users
+        # Get today's events for sidebar
+        events_today = (
+            ShowInstance.query.join(Show)
+            .filter(
+                Show.is_deleted == False,
+                ShowInstance.instance_date == date.today(),
+                ShowInstance.is_cancelled == False,
+            )
+            .order_by(Show.start_time)
+            .all()
+        )
+        
+        return render_template("index.html", events_today=events_today)
 
-    return render_template("auth/register.html", form=form)
 
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            next_page = request.args.get("next")
-            if not next_page or not is_safe_url(next_page):
-                next_page = url_for("dashboard")
-            return redirect(next_page)
-        flash("Invalid username or password")
-
-    return render_template("auth/login.html", form=form)
-
-
-@app.route("/logout")
-def logout():
-    logout_user()
-    return redirect(url_for("index"))
+# Authentication is now handled by Replit Auth
+# Login: redirect to url_for('replit_auth.login')
+# Logout: redirect to url_for('replit_auth.logout')
 
 
 @app.route("/dashboard")
@@ -164,10 +191,19 @@ def comedian_dashboard():
     )
 
     signup_instance_ids = [signup.show_instance_id for signup in upcoming_signups]
+    
+    # Add signup status to each event
+    events_with_status = []
+    for event in upcoming_instances:
+        signup_status = event.get_signup_status()
+        events_with_status.append({
+            'event': event,
+            'signup_status': signup_status
+        })
 
     return render_template(
         "comedian/dashboard.html",
-        events=upcoming_instances,
+        events=events_with_status,
         upcoming_signups=upcoming_signups,
         signup_event_ids=signup_instance_ids,
     )
@@ -177,6 +213,7 @@ def comedian_dashboard():
 @login_required
 def host_dashboard():
     """Host-specific dashboard for managing shows and lineups"""
+    import os
     # Get shows user can manage
     owned_shows = Show.query.filter_by(owner_id=current_user.id, is_deleted=False).all()
 
@@ -199,6 +236,7 @@ def host_dashboard():
         owned_shows=owned_shows,
         managed_shows=managed_shows,
         all_shows=all_shows,
+        google_maps_api_key=os.environ.get("GOOGLE_MAPS_API_KEY", ""),
     )
 
 
@@ -272,18 +310,27 @@ def get_show_data(show_id):
     if not current_user.can_edit_show(show):
         return jsonify({"success": False, "error": "Permission denied"}), 403
 
+    # Convert signup timing back to display format
+    signups_open_value, signups_open_unit = Show.convert_minutes_to_time_unit(show.signups_open)
+    signups_closed_value, signups_closed_unit = Show.convert_minutes_to_time_unit(show.signups_closed)
+    
     return jsonify(
         {
             "id": show.id,
             "name": show.name,
             "venue": show.venue,
             "address": show.address,
+            "timezone": show.timezone,
             "day_of_week": show.day_of_week,
             "start_time": show.start_time.strftime("%H:%M") if show.start_time else "",
             "end_time": show.end_time.strftime("%H:%M") if show.end_time else "",
             "description": show.description or "",
             "max_signups": show.max_signups,
-            "signup_deadline_hours": show.signup_window_after_hours,
+            "signups_open_value": signups_open_value,
+            "signups_open_unit": signups_open_unit,
+            "signups_closed_value": signups_closed_value,
+            "signups_closed_unit": signups_closed_unit,
+            "signup_deadline_hours": show.signup_window_after_hours,  # Keep for compatibility
             "show_host_info": show.show_host_info,
             "show_owner_info": show.show_owner_info,
         }
@@ -316,21 +363,46 @@ def create_show_api():
             )
 
     try:
-        # Create new show
+        # Create new show - times are in the event's local timezone
+        from app import local_to_utc
+        
+        # Parse times and convert to UTC for storage
+        start_time_str = data["start_time"]
+        end_time_str = data.get("end_time")
+        event_timezone = data.get("timezone", "America/New_York")  # Get timezone from form
+        
+        # Convert time strings to datetime objects in event timezone, then to UTC
+        start_dt = datetime.strptime(f"2000-01-01 {start_time_str}", "%Y-%m-%d %H:%M")
+        start_time_utc = local_to_utc(start_dt, event_timezone).time()
+        
+        end_time_utc = None
+        if end_time_str:
+            end_dt = datetime.strptime(f"2000-01-01 {end_time_str}", "%Y-%m-%d %H:%M")
+            end_time_utc = local_to_utc(end_dt, event_timezone).time()
+        
+        # Convert signup timing to minutes
+        signups_open_minutes = Show.convert_time_to_minutes(
+            data.get("signups_open_value", 2), 
+            data.get("signups_open_unit", "days")
+        )
+        signups_closed_minutes = Show.convert_time_to_minutes(
+            data.get("signups_closed_value", 0), 
+            data.get("signups_closed_unit", "minutes")
+        )
+        
         show = Show(
             name=data["name"],
             venue=data["venue"],
             address=data["address"],
+            timezone=event_timezone,
             description=data.get("description", ""),
             day_of_week=data["day_of_week"],
-            start_time=datetime.strptime(data["start_time"], "%H:%M").time(),
-            end_time=(
-                datetime.strptime(data["end_time"], "%H:%M").time()
-                if data.get("end_time")
-                else None
-            ),
+            start_time=start_time_utc,
+            end_time=end_time_utc,
             max_signups=data["max_signups"],
-            signup_window_after_hours=data["signup_deadline_hours"],
+            signups_open=signups_open_minutes,
+            signups_closed=signups_closed_minutes,
+            signup_window_after_hours=data.get("signup_deadline_hours", 2),  # Keep for backward compatibility
             owner_id=current_user.id,
             default_host_id=current_user.id,
             show_host_info=data.get("show_host_info", True),
@@ -345,11 +417,30 @@ def create_show_api():
         start_date = show.get_next_instance_date()
         end_date = start_date + timedelta(days=90)
 
+        # Create instances more efficiently with simple logic
+        instances = []
         current_date = start_date
-        while current_date <= end_date:
-            instance = ShowInstance(show_id=show.id, instance_date=current_date)
-            db.session.add(instance)
-            current_date = show.get_next_instance_date(current_date)
+        instance_count = 0
+        
+        while current_date <= end_date and instance_count < 20:  # Limit to 20 instances (~5 months)
+            instances.append(ShowInstance(show_id=show.id, instance_date=current_date))
+            
+            # Simple weekly increment for now to avoid complex date calculations
+            if show.repeat_cadence == "bi-weekly":
+                current_date += timedelta(days=14)
+            elif show.repeat_cadence == "monthly":
+                # Add roughly 4 weeks for monthly
+                current_date += timedelta(days=28)
+            elif show.repeat_cadence == "custom" and show.custom_repeat_days:
+                current_date += timedelta(days=show.custom_repeat_days)
+            else:
+                # Default weekly
+                current_date += timedelta(days=7)
+            
+            instance_count += 1
+        
+        # Add all instances at once
+        db.session.add_all(instances)
 
         db.session.commit()
 
@@ -402,6 +493,19 @@ def update_show_api(show_id):
             show.max_signups = data["max_signups"]
         if "signup_deadline_hours" in data:
             show.signup_window_after_hours = data["signup_deadline_hours"]
+        
+        # Handle new signup timing fields
+        if "signups_open_value" in data and "signups_open_unit" in data:
+            show.signups_open = Show.convert_time_to_minutes(
+                data["signups_open_value"], 
+                data["signups_open_unit"]
+            )
+        if "signups_closed_value" in data and "signups_closed_unit" in data:
+            show.signups_closed = Show.convert_time_to_minutes(
+                data["signups_closed_value"], 
+                data["signups_closed_unit"]
+            )
+        
         if "show_host_info" in data:
             show.show_host_info = data["show_host_info"]
         if "show_owner_info" in data:
@@ -428,7 +532,24 @@ def update_show_api(show_id):
 def create_event():
     """Create a new recurring show"""
     form = EventForm()
+    
+    if request.method == "POST":
+        print(f"Form validation: {form.validate()}")
+        print(f"Form errors: {form.errors}")
+        for field_name, field in form._fields.items():
+            if hasattr(field, 'data'):
+                print(f"{field_name}: {field.data}")
+    
     if form.validate_on_submit():
+        # Convert signup timing to minutes with safe defaults
+        signups_open_minutes = Show.convert_time_to_minutes(
+            form.signups_open_value.data or 2, form.signups_open_unit.data or "days"
+        )
+        signups_closed_minutes = Show.convert_time_to_minutes(
+            form.signups_closed_value.data if form.signups_closed_value.data is not None else 0, 
+            form.signups_closed_unit.data or "minutes"
+        )
+        
         # Create new show
         show = Show(
             name=form.name.data,
@@ -439,7 +560,9 @@ def create_event():
             start_time=form.start_time.data,
             end_time=form.end_time.data,
             max_signups=form.max_signups.data,
-            signup_window_after_hours=form.signup_deadline_hours.data,
+            signups_open=signups_open_minutes,
+            signups_closed=signups_closed_minutes,
+            signup_window_after_hours=form.signup_deadline_hours.data,  # Keep for backward compatibility
             owner_id=current_user.id,
             default_host_id=current_user.id,
             show_host_info=form.show_host_info.data,
@@ -475,7 +598,7 @@ def create_event():
         flash("Show created successfully!")
         return redirect(url_for("host_dashboard"))
 
-    return render_template("host/create_event.html", form=form)
+    return render_template("host/create_event.html", form=form, GOOGLE_MAPS_API_KEY=os.environ.get('GOOGLE_MAPS_API_KEY'))
 
 
 @app.route("/host/show/<int:show_id>/settings", methods=["GET", "POST"])
@@ -722,8 +845,11 @@ def event_info(event_id):
         .order_by(Signup.signup_time)
         .all()
     )
+    
+    # Get signup status for display
+    signup_status = instance.get_signup_status()
 
-    return render_template("public/event_info.html", event=instance, signups=signups)
+    return render_template("public/event_info.html", event=instance, signups=signups, signup_status=signup_status)
 
 
 @app.route("/live/<int:event_id>")
@@ -781,16 +907,10 @@ def signup_for_event(event_id):
     form = SignupForm()
 
     if form.validate_on_submit():
-        # Check if signups are still open
-        from datetime import datetime, timedelta
-
-        show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-        signup_deadline = show_datetime - timedelta(
-            hours=instance.show.signup_window_after_hours
-        )
-
-        if datetime.now() > signup_deadline:
-            flash("Signup deadline has passed for this show.", "error")
+        # Check if signups are open using new signup window logic
+        if not instance.is_signup_open():
+            signup_status = instance.get_signup_status()
+            flash(f"Cannot sign up: {signup_status['message']}", "error")
             referrer = request.referrer
             if referrer and "calendar" in referrer:
                 return redirect(url_for("calendar_view"))
@@ -870,19 +990,11 @@ def api_signup_for_event(event_id):
             400,
         )
 
-    # Check if signups are still open
-    from datetime import datetime, timedelta
-
-    show_datetime = datetime.combine(instance.instance_date, instance.start_time)
-    signup_deadline = show_datetime - timedelta(
-        hours=instance.show.signup_window_after_hours
-    )
-
-    if datetime.now() > signup_deadline:
+    # Check if signup window is open
+    if not instance.is_signup_open():
+        signup_status = instance.get_signup_status()
         return (
-            jsonify(
-                {"success": False, "error": "Signup deadline has passed for this show."}
-            ),
+            jsonify({"success": False, "error": signup_status['message']}),
             400,
         )
 

@@ -2,21 +2,29 @@ import secrets
 from datetime import date, datetime, time, timedelta
 
 from flask_login import UserMixin
+from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import UniqueConstraint
 
 from app import db
 
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    __tablename__ = 'users'
+    id = db.Column(db.String, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    first_name = db.Column(db.String(50), nullable=True)
+    last_name = db.Column(db.String(50), nullable=True)
+    profile_image_url = db.Column(db.String, nullable=True)
+    
+    # Keep legacy fields for backward compatibility
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    password_hash = db.Column(db.String(256), nullable=True)
+    email_verified = db.Column(db.Boolean, default=True, nullable=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     owned_shows = db.relationship(
@@ -52,7 +60,16 @@ class User(UserMixin, db.Model):
     @property
     def full_name(self):
         """Return full name"""
-        return f"{self.first_name} {self.last_name}"
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        elif self.username:
+            return self.username
+        else:
+            return self.email or f"User {self.id}"
 
     def get_show_role(self, show):
         """Get user's highest role for a specific show"""
@@ -78,11 +95,26 @@ class User(UserMixin, db.Model):
         return self.get_show_role(show) in ["owner", "runner", "host"]
 
 
+# OAuth table is mandatory for Replit Auth
+class OAuth(OAuthConsumerMixin, db.Model):
+    user_id = db.Column(db.String, db.ForeignKey(User.id))
+    browser_session_key = db.Column(db.String, nullable=False)
+    user = db.relationship(User)
+
+    __table_args__ = (UniqueConstraint(
+        'user_id',
+        'browser_session_key',
+        'provider',
+        name='uq_user_browser_session_key_provider',
+    ),)
+
+
 class Show(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     venue = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200), nullable=False)
+    timezone = db.Column(db.String(50), nullable=False, default="America/New_York")
     description = db.Column(db.Text)
 
     # Show timing and scheduling
@@ -103,16 +135,18 @@ class Show(db.Model):
 
     # Show settings
     max_signups = db.Column(db.Integer, default=20)
+    signups_open = db.Column(db.Integer, default=2880)  # Minutes before show when signups open (default: 2 days)
+    signups_closed = db.Column(db.Integer, default=0)  # Minutes before show when signups close (default: at show start)
     signup_window_before_days = db.Column(
         db.Integer, default=14
-    )  # How early can comedians sign up
+    )  # How early can comedians sign up (DEPRECATED - use signups_open)
     signup_window_after_hours = db.Column(
         db.Integer, default=2
-    )  # How late can comedians sign up
+    )  # How late can comedians sign up (DEPRECATED - use signups_closed)
 
     # Ownership
-    owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    default_host_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    owner_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
+    default_host_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=True)
 
     # Display settings
     show_host_info = db.Column(db.Boolean, default=True)  # Show host info publicly
@@ -149,6 +183,81 @@ class Show(db.Model):
         """Restore a deleted show"""
         self.is_deleted = False
         self.ended_date = None
+
+    def get_signup_open_datetime(self, instance_date):
+        """Calculate when signups open for a specific instance"""
+        from datetime import datetime, timedelta, timezone
+        from app import utc_to_local
+        
+        # Combine instance date with show start time in UTC
+        show_datetime_utc = datetime.combine(instance_date, self.start_time)
+        
+        # Convert to timezone-aware datetime (times are stored in UTC)
+        show_datetime_utc = show_datetime_utc.replace(tzinfo=timezone.utc)
+        
+        # Subtract signups_open minutes
+        signup_open_utc = show_datetime_utc - timedelta(minutes=self.signups_open)
+        
+        # Convert back to local timezone for display
+        return utc_to_local(signup_open_utc, self.timezone)
+    
+    def get_signup_closed_datetime(self, instance_date):
+        """Calculate when signups close for a specific instance"""
+        from datetime import datetime, timedelta, timezone
+        from app import utc_to_local
+        
+        # Combine instance date with show start time in UTC
+        show_datetime_utc = datetime.combine(instance_date, self.start_time)
+        
+        # Convert to timezone-aware datetime (times are stored in UTC)
+        show_datetime_utc = show_datetime_utc.replace(tzinfo=timezone.utc)
+        
+        # Calculate signup close time based on signups_closed value
+        # Positive values: close X minutes BEFORE show start
+        # Negative values: close X minutes AFTER show start  
+        if self.signups_closed >= 0:
+            # Normal case: close before the show
+            signup_closed_utc = show_datetime_utc - timedelta(minutes=self.signups_closed)
+        else:
+            # Negative case: close after the show starts (add the absolute value)
+            signup_closed_utc = show_datetime_utc + timedelta(minutes=abs(self.signups_closed))
+        
+        # Convert back to local timezone for display
+        return utc_to_local(signup_closed_utc, self.timezone)
+    
+    @staticmethod
+    def convert_time_to_minutes(value, unit):
+        """Convert time value with unit to minutes"""
+        if unit == "minutes":
+            return value
+        elif unit == "hours":
+            return value * 60
+        elif unit == "days":
+            return value * 60 * 24
+        elif unit == "weeks":
+            return value * 60 * 24 * 7
+        elif unit == "months":
+            return value * 60 * 24 * 30  # Approximate 30 days per month
+        else:
+            return value
+    
+    @staticmethod
+    def convert_minutes_to_time_unit(minutes, preferred_unit="days"):
+        """Convert minutes back to most appropriate time unit for display"""
+        if minutes == 0:
+            return 0, "minutes"
+        
+        # Try to find the largest unit that divides evenly
+        if minutes % (30 * 24 * 60) == 0:
+            return minutes // (30 * 24 * 60), "months"
+        elif minutes % (7 * 24 * 60) == 0:
+            return minutes // (7 * 24 * 60), "weeks"
+        elif minutes % (24 * 60) == 0:
+            return minutes // (24 * 60), "days"
+        elif minutes % 60 == 0:
+            return minutes // 60, "hours"
+        else:
+            return minutes, "minutes"
 
     def get_next_instance_date(self, from_date=None):
         """Calculate next show instance date based on repeat cadence"""
@@ -188,9 +297,9 @@ class ShowRunner(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey("show.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
-    added_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    added_by_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("show_id", "user_id", name="unique_show_runner"),
@@ -202,9 +311,9 @@ class ShowHost(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey("show.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
-    added_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    added_by_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("show_id", "user_id", name="unique_show_host"),
@@ -291,6 +400,53 @@ class ShowInstance(db.Model):
             return hosts[0].full_name
         else:
             return ", ".join([host.full_name for host in hosts])
+    
+    def is_signup_open(self):
+        """Check if signups are currently open for this instance"""
+        from datetime import datetime, timezone
+        
+        now = datetime.now(timezone.utc)
+        signup_open = self.show.get_signup_open_datetime(self.instance_date)
+        signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
+        
+        # Convert to UTC for comparison
+        from app import local_to_utc
+        signup_open_utc = local_to_utc(signup_open, self.show.timezone)
+        signup_closed_utc = local_to_utc(signup_closed, self.show.timezone)
+        
+        return signup_open_utc <= now <= signup_closed_utc
+    
+    def get_signup_status(self):
+        """Get signup status with descriptive message"""
+        from datetime import datetime, timezone
+        from app import local_to_utc
+        
+        now = datetime.now(timezone.utc)
+        signup_open = self.show.get_signup_open_datetime(self.instance_date)
+        signup_closed = self.show.get_signup_closed_datetime(self.instance_date)
+        
+        # Convert to UTC for comparison
+        signup_open_utc = local_to_utc(signup_open, self.show.timezone)
+        signup_closed_utc = local_to_utc(signup_closed, self.show.timezone)
+        
+        if now < signup_open_utc:
+            return {
+                'status': 'not_open',
+                'message': f"Signups open {signup_open.strftime('%m/%d/%y at %I:%M %p')}",
+                'can_signup': False
+            }
+        elif now > signup_closed_utc:
+            return {
+                'status': 'closed',
+                'message': "Signups are closed",
+                'can_signup': False
+            }
+        else:
+            return {
+                'status': 'open',
+                'message': "Signups are open",
+                'can_signup': True
+            }
 
 
 class ShowInstanceHost(db.Model):
@@ -300,7 +456,7 @@ class ShowInstanceHost(db.Model):
     show_instance_id = db.Column(
         db.Integer, db.ForeignKey("show_instance.id"), nullable=False
     )
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -312,7 +468,7 @@ class Signup(db.Model):
     """Comedian signup for a specific show instance"""
 
     id = db.Column(db.Integer, primary_key=True)
-    comedian_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    comedian_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     show_instance_id = db.Column(
         db.Integer, db.ForeignKey("show_instance.id"), nullable=False
     )

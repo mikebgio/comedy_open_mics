@@ -6,7 +6,7 @@ import random
 from datetime import datetime, time, timedelta
 
 from app import app, db
-from models import Event, Signup, User
+from models import Show, ShowInstance, Signup, User
 
 # Realistic comedian names and Boston venues
 COMEDIAN_NAMES = [
@@ -138,8 +138,6 @@ def create_users():
             email=email,
             first_name=first_name,
             last_name=last_name,
-            is_comedian=True,
-            is_host=False,
             email_verified=True,
         )
         user.set_password("password123")  # Simple password for testing
@@ -149,19 +147,33 @@ def create_users():
 
 
 def create_events(users):
-    """Create events for some users (max 8)"""
+    """Create shows for some users (max 8)"""
     # Select 8 random users to be hosts
     host_users = random.sample(users, 8)
-    events = []
+    shows = []
+
+    # Signup timing variations for realistic data
+    signup_timing_options = [
+        (2880, 0),      # 2 days before, closes at show start
+        (4320, 30),     # 3 days before, closes 30 minutes before show
+        (1440, -15),    # 1 day before, closes 15 minutes into show
+        (10080, 60),    # 1 week before, closes 1 hour before show
+        (720, 0),       # 12 hours before, closes at show start
+        (2160, 120),    # 1.5 days before, closes 2 hours before show
+        (7200, 0),      # 5 days before, closes at show start
+        (1080, -30),    # 18 hours before, closes 30 minutes into show
+    ]
 
     for i, venue_data in enumerate(BOSTON_VENUES):
         if i >= len(host_users):
             break
 
         host = host_users[i]
-        host.is_host = True  # Make them a host
+        
+        # Get signup timing for this show
+        signups_open, signups_closed = signup_timing_options[i % len(signup_timing_options)]
 
-        event = Event(
+        show = Show(
             name=venue_data["name"],
             venue=venue_data["venue"],
             address=venue_data["address"],
@@ -170,63 +182,66 @@ def create_events(users):
             end_time=venue_data["end_time"],
             description=venue_data["description"],
             max_signups=random.randint(15, 25),
-            signup_deadline_hours=random.randint(1, 4),
-            host_id=host.id,
-            is_active=True,
+            signups_open=signups_open,
+            signups_closed=signups_closed,
+            signup_window_after_hours=random.randint(1, 4),  # Keep for backward compatibility
+            owner_id=host.id,
+            default_host_id=host.id,
+            timezone="America/New_York",
+            repeat_cadence="weekly",
         )
-        events.append(event)
+        shows.append(show)
 
-    return events
+    return shows
 
 
-def create_signups(users, events):
-    """Create some random signups for events"""
+def create_signups(users, shows):
+    """Create some random signups for shows"""
     signups = []
 
-    # Get current date and next few weeks
-    today = datetime.now().date()
+    # Create show instances first
+    for show in shows:
+        # Create a few upcoming instances for each show
+        for weeks_ahead in range(1, 4):  # Next 3 weeks
+            instance_date = datetime.now().date() + timedelta(weeks=weeks_ahead)
+            
+            # Adjust to the correct day of the week
+            days_ahead = (
+                list(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']).index(show.day_of_week) 
+                - instance_date.weekday()
+            ) % 7
+            if days_ahead == 0 and weeks_ahead == 1:
+                days_ahead = 7  # Next week, not this week
+            
+            instance_date = instance_date + timedelta(days=days_ahead)
+            
+            instance = ShowInstance(
+                show_id=show.id,
+                instance_date=instance_date
+            )
+            db.session.add(instance)
+            
+        db.session.flush()  # Get the instance IDs
 
-    for event in events:
-        # Find next occurrence of this day of week
-        days_ahead = {
-            "Monday": 0,
-            "Tuesday": 1,
-            "Wednesday": 2,
-            "Thursday": 3,
-            "Friday": 4,
-            "Saturday": 5,
-            "Sunday": 6,
-        }
-
-        target_weekday = days_ahead[event.day_of_week]
-        days_until_target = (target_weekday - today.weekday()) % 7
-        if days_until_target == 0:  # If it's today, move to next week
-            days_until_target = 7
-
-        event_date = today + timedelta(days=days_until_target)
-
-        # Create signups for 3-8 random comedians for each event
-        num_signups = random.randint(3, min(8, event.max_signups))
-        selected_comedians = random.sample(
-            [u for u in users if not u.is_host], num_signups
+    # Now create signups for instances
+    instances = ShowInstance.query.all()
+    for instance in instances:
+        # Random number of signups for each instance (30-80% of max capacity)
+        num_signups = random.randint(
+            int(instance.show.max_signups * 0.3), int(instance.show.max_signups * 0.8)
         )
 
-        for position, comedian in enumerate(selected_comedians, 1):
+        # Select random users for signups (excluding the show owner)
+        available_users = [u for u in users if u.id != instance.show.owner_id]
+        signup_users = random.sample(available_users, min(num_signups, len(available_users)))
+
+        for i, user in enumerate(signup_users):
             signup = Signup(
-                comedian_id=comedian.id,
-                event_id=event.id,
-                event_date=event_date,
-                position=position,
-                performed=False,
-                notes=random.choice(
-                    [
-                        None,
-                        "Working on new material",
-                        "First time here!",
-                        "Trying out crowd work",
-                        "New 5-minute set",
-                    ]
-                ),
+                comedian_id=user.id,
+                show_instance_id=instance.id,
+                signup_time=datetime.now()
+                - timedelta(days=random.randint(1, 10)),  # Random signup time
+                position=i + 1,  # Position in lineup
             )
             signups.append(signup)
 
@@ -245,17 +260,17 @@ def seed_database():
         db.session.commit()
         print(f"Created {len(users)} users")
 
-        print("Creating events...")
-        events = create_events(users)
+        print("Creating shows...")
+        shows = create_events(users)
 
-        # Add events to session
-        for event in events:
-            db.session.add(event)
+        # Add shows to session
+        for show in shows:
+            db.session.add(show)
         db.session.commit()
-        print(f"Created {len(events)} events")
+        print(f"Created {len(shows)} shows")
 
         print("Creating signups...")
-        signups = create_signups(users, events)
+        signups = create_signups(users, shows)
 
         # Add signups to session
         for signup in signups:
@@ -265,7 +280,8 @@ def seed_database():
 
         print("Database seeded successfully!")
         print(f"Total users: {User.query.count()}")
-        print(f"Total events: {Event.query.count()}")
+        print(f"Total shows: {Show.query.count()}")
+        print(f"Total show instances: {ShowInstance.query.count()}")
         print(f"Total signups: {Signup.query.count()}")
 
 
@@ -274,7 +290,8 @@ if __name__ == "__main__":
     with app.app_context():
         print("Clearing existing data...")
         Signup.query.delete()
-        Event.query.delete()
+        ShowInstance.query.delete()
+        Show.query.delete()
         User.query.delete()
         db.session.commit()
 

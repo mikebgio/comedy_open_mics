@@ -92,15 +92,52 @@ class EventForm(FlaskForm):
         ],
         validators=[DataRequired()],
     )
-    start_time = TimeField("Start Time", validators=[DataRequired()])
-    end_time = TimeField("End Time", validators=[DataRequired()])
+    start_time = StringField("Start Time", validators=[DataRequired()], render_kw={"type": "time"})
+    end_time = StringField("End Time", validators=[DataRequired()], render_kw={"type": "time"})
+    timezone = StringField("Timezone", default="America/New_York", render_kw={"readonly": True})
     description = TextAreaField("Description")
     max_signups = IntegerField(
         "Maximum Signups", validators=[DataRequired(), NumberRange(min=1, max=50)]
     )
+    
+    # New signup timing fields
+    signups_open_value = IntegerField(
+        "Signups Open", validators=[DataRequired(), NumberRange(min=0, max=525600)], default=2
+    )
+    signups_open_unit = SelectField(
+        "Unit",
+        choices=[
+            ("minutes", "Minutes"),
+            ("hours", "Hours"),
+            ("days", "Days"),
+            ("weeks", "Weeks"),
+            ("months", "Months"),
+        ],
+        default="days",
+        validators=[DataRequired()],
+    )
+    
+    signups_closed_value = IntegerField(
+        "Signups Close", validators=[Optional(), NumberRange(min=-1440, max=525600)], default=0
+    )
+    signups_closed_unit = SelectField(
+        "Unit",
+        choices=[
+            ("minutes", "Minutes"),
+            ("hours", "Hours"),
+            ("days", "Days"),
+            ("weeks", "Weeks"),
+            ("months", "Months"),
+        ],
+        default="minutes",
+        validators=[DataRequired()],
+    )
+    
+    # Deprecated field - keeping for backward compatibility  
     signup_deadline_hours = IntegerField(
         "Signup Deadline (hours before)",
-        validators=[DataRequired(), NumberRange(min=0, max=72)],
+        validators=[Optional(), NumberRange(min=0, max=72)],
+        default=2,
     )
     show_host_info = BooleanField("Show host information publicly", default=True)
     show_owner_info = BooleanField("Show owner information publicly", default=False)

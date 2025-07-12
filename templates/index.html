@@ -11,11 +11,8 @@
             
             {% if not current_user.is_authenticated %}
                 <div class="mt-4">
-                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg me-3">
-                        <i class="fas fa-user-plus me-2"></i>Get Started
-                    </a>
-                    <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login with Replit
                     </a>
                 </div>
             {% endif %}

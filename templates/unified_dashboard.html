@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="hero-section bg-dark p-4 rounded mb-4">
+            <h1 class="display-5 text-primary mb-0">
+                <i class="fas fa-tachometer-alt me-3"></i>Welcome back, {{ current_user.first_name }}!
+            </h1>
+            <p class="lead mb-0">Here's what's happening with your comedy journey</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- My Next Set -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>My Next Set
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if next_signup %}
+                    <div class="text-center">
+                        <h4 class="text-primary">{{ next_signup.show_instance.show.name }}</h4>
+                        <p class="mb-2">
+                            <i class="fas fa-calendar text-info me-1"></i>
+                            {{ next_signup.show_instance.instance_date.strftime('%A, %B %d, %Y') }}
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-clock text-warning me-1"></i>
+                            {{ next_signup.show_instance.start_time.strftime('%I:%M %p') }}
+                        </p>
+                        <p class="mb-3">
+                            <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                            {{ next_signup.show_instance.show.venue }}
+                        </p>
+                        {% if next_signup.position %}
+                            <div class="badge bg-success fs-6 mb-3">
+                                Position #{{ next_signup.position }}
+                            </div>
+                        {% endif %}
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('event_info', event_id=next_signup.show_instance.id) }}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-info-circle me-1"></i>View Details
+                            </a>
+                            <a href="{{ url_for('live_lineup', event_id=next_signup.show_instance.id) }}" 
+                               class="btn btn-outline-success">
+                                <i class="fas fa-list me-1"></i>See Lineup
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-microphone-slash fa-3x mb-3"></i>
+                        <p>No upcoming sets scheduled</p>
+                        <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Find Open Mics
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- My Open Mics (only show if user owns shows) -->
+    {% if owned_shows %}
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>My Open Mics
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for show in owned_shows %}
+                    <div class="mb-3 p-2 border rounded">
+                        <h6 class="fw-bold mb-1">{{ show.name }}</h6>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-day me-1"></i>{{ show.day_of_week }}s at {{ show.start_time.strftime('%I:%M %p') }}
+                        </small>
+                        <br>
+                        <small class="text-muted">
+                            <i class="fas fa-map-marker-alt me-1"></i>{{ show.venue }}
+                        </small>
+                    </div>
+                {% endfor %}
+                
+                {% if owned_show_instances %}
+                    <hr>
+                    <h6 class="text-muted mb-2">Upcoming Shows:</h6>
+                    {% for instance in owned_show_instances[:3] %}
+                        <div class="small mb-2">
+                            <span class="badge bg-info">{{ instance.instance_date.strftime('%m/%d') }}</span>
+                            {{ instance.show.name }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{{ url_for('host_dashboard') }}" class="btn btn-success">
+                        <i class="fas fa-cogs me-1"></i>Manage Shows
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Your Upcoming Performances -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-star me-2"></i>Your Upcoming Performances
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_performances %}
+                    {% for signup in upcoming_performances %}
+                        <div class="mb-3 p-2 border rounded">
+                            <h6 class="fw-bold mb-1">{{ signup.show_instance.show.name }}</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>{{ signup.show_instance.instance_date.strftime('%m/%d/%Y') }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ signup.show_instance.start_time.strftime('%I:%M %p') }}
+                            </small>
+                            {% if signup.position %}
+                                <br>
+                                <span class="badge bg-primary">Position #{{ signup.position }}</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-warning">
+                            <i class="fas fa-calendar-plus me-1"></i>Find More Shows
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                        <p>No upcoming performances</p>
+                        <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-warning">
+                            <i class="fas fa-search me-1"></i>Find Open Mics
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-calendar-alt d-block mb-1"></i>
+                            View Calendar
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('comedian_dashboard') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-microphone d-block mb-1"></i>
+                            Find Open Mics
+                        </a>
+                    </div>
+                    {% if owned_shows or current_user.show_runner_roles or current_user.show_host_roles %}
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('host_dashboard') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-users d-block mb-1"></i>
+                            Host Dashboard
+                        </a>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('create_event') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-plus d-block mb-1"></i>
+                            Create Show
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

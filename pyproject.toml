@@ -27,6 +27,11 @@ dependencies = [
     "isort>=6.0.1",
     "flake8>=7.2.0",
     "email-validator>=2.2.0",
+    "pytz>=2025.2",
+    "python-dateutil>=2.9.0.post0",
+    "flask-dance>=7.1.0",
+    "oauthlib>=3.3.1",
+    "pyjwt>=2.10.1",
 ]
 
 [tool.setuptools.packages.find]

@@ -43,7 +43,9 @@
                     
                     <div class="mb-3">
                         {{ form.address.label(class="form-label") }}
-                        {{ form.address(class="form-control") }}
+                        {{ form.address(class="form-control", id="eventAddress", placeholder="Start typing an address...", style="background-color: #343a40; color: #fff; border-color: #495057;") }}
+                        <div id="addressAutocomplete" style="display: none;"></div>
+                        {{ form.timezone(id="eventTimezone") }}
                         {% if form.address.errors %}
                             <div class="text-danger">
                                 {% for error in form.address.errors %}
@@ -51,6 +53,10 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
+                        <small class="form-text text-muted">
+                            <span id="addressHelp">Select from suggestions for accurate timezone detection</span>
+                            <br><small class="text-warning" id="debugInfo" style="font-size: 0.8em;"></small>
+                        </small>
                     </div>
                     
                     <div class="row">
@@ -68,7 +74,7 @@
                         
                         <div class="col-md-4 mb-3">
                             {{ form.start_time.label(class="form-label") }}
-                            {{ form.start_time(class="form-control") }}
+                            {{ form.start_time(class="form-control", id="eventStartTime") }}
                             {% if form.start_time.errors %}
                                 <div class="text-danger">
                                     {% for error in form.start_time.errors %}
@@ -76,11 +82,12 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted" id="startTimeHelp">Select an address first to determine timezone</small>
                         </div>
                         
                         <div class="col-md-4 mb-3">
                             {{ form.end_time.label(class="form-label") }}
-                            {{ form.end_time(class="form-control") }}
+                            {{ form.end_time(class="form-control", id="eventEndTime") }}
                             {% if form.end_time.errors %}
                                 <div class="text-danger">
                                     {% for error in form.end_time.errors %}
@@ -88,6 +95,7 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted" id="endTimeHelp">Select an address first to determine timezone</small>
                         </div>
                     </div>
                     
@@ -104,33 +112,56 @@
                         <div class="form-text">Optional description about your open mic</div>
                     </div>
                     
+                    <div class="mb-3">
+                        {{ form.max_signups.label(class="form-label") }}
+                        {{ form.max_signups(class="form-control") }}
+                        {% if form.max_signups.errors %}
+                            <div class="text-danger">
+                                {% for error in form.max_signups.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Maximum number of comedians per show</div>
+                    </div>
+                    
+                    <!-- Signup Timing Section -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            {{ form.max_signups.label(class="form-label") }}
-                            {{ form.max_signups(class="form-control") }}
-                            {% if form.max_signups.errors %}
+                            <label class="form-label">Signups Open</label>
+                            <div class="input-group">
+                                {{ form.signups_open_value(class="form-control", value="2") }}
+                                {{ form.signups_open_unit(class="form-select") }}
+                            </div>
+                            {% if form.signups_open_value.errors or form.signups_open_unit.errors %}
                                 <div class="text-danger">
-                                    {% for error in form.max_signups.errors %}
+                                    {% for error in form.signups_open_value.errors + form.signups_open_unit.errors %}
                                         <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Maximum number of comedians per show</div>
+                            <div class="form-text">How far in advance comedians can sign up</div>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            {{ form.signup_deadline_hours.label(class="form-label") }}
-                            {{ form.signup_deadline_hours(class="form-control") }}
-                            {% if form.signup_deadline_hours.errors %}
+                            <label class="form-label">Signups Close</label>
+                            <div class="input-group">
+                                {{ form.signups_closed_value(class="form-control", placeholder="0") }}
+                                {{ form.signups_closed_unit(class="form-select") }}
+                            </div>
+                            {% if form.signups_closed_value.errors or form.signups_closed_unit.errors %}
                                 <div class="text-danger">
-                                    {% for error in form.signup_deadline_hours.errors %}
+                                    {% for error in form.signups_closed_value.errors + form.signups_closed_unit.errors %}
                                         <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="form-text">How many hours before the event should signups close</div>
+                            <div class="form-text">When signups close (negative = minutes into show)</div>
                         </div>
                     </div>
+                    
+                    <!-- Hidden deprecated field for backward compatibility -->
+                    {{ form.signup_deadline_hours(class="form-control", style="display: none;", value="2") }}
                     
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-success">
@@ -145,4 +176,184 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Google Maps JavaScript API -->
+<script>
+    function initMap() {
+        try {
+            console.log('Google Maps API loaded successfully');
+            const addressInput = document.getElementById('eventAddress');
+            
+            if (!addressInput) {
+                console.error('Address input not found');
+                return;
+            }
+
+            // Create autocomplete instance
+            const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                types: ['geocode'],
+                componentRestrictions: { country: ['us', 'ca'] }
+            });
+
+            // Apply dark theme styles to the autocomplete dropdown
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .pac-container {
+                    background-color: #212529 !important;
+                    border: 1px solid #495057 !important;
+                    border-radius: 0.375rem !important;
+                    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+                }
+                .pac-item {
+                    background-color: #212529 !important;
+                    color: #ffffff !important;
+                    border-bottom: 1px solid #495057 !important;
+                    cursor: pointer !important;
+                    padding: 8px 12px !important;
+                }
+                .pac-item:hover {
+                    background-color: #495057 !important;
+                }
+                .pac-item-selected {
+                    background-color: #0d6efd !important;
+                }
+                .pac-item-query {
+                    color: #ffffff !important;
+                }
+                .pac-matched {
+                    font-weight: bold !important;
+                    color: #adb5bd !important;
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Handle place selection
+            autocomplete.addListener('place_changed', function() {
+                const place = autocomplete.getPlace();
+                console.log('Place selected:', place);
+                
+                if (!place.geometry) {
+                    console.error('No geometry data for selected place');
+                    updateDebugInfo('Please select a location from the dropdown suggestions.');
+                    return;
+                }
+
+                // Get coordinates
+                const lat = place.geometry.location.lat();
+                const lng = place.geometry.location.lng();
+                console.log('Coordinates:', lat, lng);
+
+                // Detect timezone
+                detectTimezone(lat, lng);
+                
+                // Update address field with formatted address
+                if (place.formatted_address) {
+                    addressInput.value = place.formatted_address;
+                    updateDebugInfo(`Selected: ${place.formatted_address}`);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error initializing Google Maps:', error);
+            updateDebugInfo('Error loading Google Maps. Please enter address manually.');
+        }
+    }
+
+    function detectTimezone(lat, lng) {
+        // Timezone detection logic for North America
+        const timezoneMap = {
+            'EST': { zones: ['America/New_York'], bounds: {lat: [24, 50], lng: [-85, -65]} },
+            'CST': { zones: ['America/Chicago'], bounds: {lat: [25, 50], lng: [-106, -85]} },
+            'MST': { zones: ['America/Denver'], bounds: {lat: [31, 49], lng: [-114, -102]} },
+            'PST': { zones: ['America/Los_Angeles'], bounds: {lat: [32, 49], lng: [-125, -114]} },
+            'AST': { zones: ['America/Halifax'], bounds: {lat: [43, 70], lng: [-70, -52]} },
+            'AKST': { zones: ['America/Anchorage'], bounds: {lat: [54, 72], lng: [-180, -130]} },
+            'HST': { zones: ['Pacific/Honolulu'], bounds: {lat: [18, 29], lng: [-178, -154]} }
+        };
+
+        let detectedTimezone = 'America/New_York'; // Default to Eastern
+
+        for (const [zone, data] of Object.entries(timezoneMap)) {
+            const bounds = data.bounds;
+            if (lat >= bounds.lat[0] && lat <= bounds.lat[1] && 
+                lng >= bounds.lng[0] && lng <= bounds.lng[1]) {
+                detectedTimezone = data.zones[0];
+                console.log(`Detected timezone: ${detectedTimezone} (${zone})`);
+                break;
+            }
+        }
+
+        // Update timezone field
+        const timezoneField = document.getElementById('eventTimezone');
+        if (timezoneField) {
+            timezoneField.value = detectedTimezone;
+            updateTimeHelpers(detectedTimezone);
+        }
+    }
+
+    function updateTimeHelpers(timezone) {
+        const startHelp = document.getElementById('startTimeHelp');
+        const endHelp = document.getElementById('endTimeHelp');
+        const tzName = timezone.split('/')[1].replace('_', ' ');
+        
+        if (startHelp) startHelp.textContent = `Times will be in ${tzName} timezone`;
+        if (endHelp) endHelp.textContent = `Times will be in ${tzName} timezone`;
+    }
+
+    function updateDebugInfo(message) {
+        const debugElement = document.getElementById('debugInfo');
+        if (debugElement) {
+            debugElement.textContent = message;
+        }
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded, checking Google Maps...');
+        console.log('Google available?', typeof google !== 'undefined');
+        console.log('API Key present?', '{{ GOOGLE_MAPS_API_KEY|length > 0 }}');
+        
+        // Check if Google Maps is available
+        if (typeof google === 'undefined') {
+            console.error('Google Maps API not loaded');
+            updateDebugInfo('Maps API not available. Please enter address manually.');
+        } else {
+            console.log('Google Maps API is available');
+            updateDebugInfo('Google Maps loaded successfully');
+        }
+        
+        // Add form validation debugging
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                console.log('Form submitted!');
+                console.log('Form data:', new FormData(form));
+                
+                // Check required fields
+                const requiredFields = form.querySelectorAll('[required]');
+                let hasErrors = false;
+                requiredFields.forEach(field => {
+                    if (!field.value.trim()) {
+                        console.log('Missing required field:', field.name);
+                        hasErrors = true;
+                    }
+                });
+                
+                if (hasErrors) {
+                    console.log('Form validation failed');
+                    e.preventDefault();
+                } else {
+                    console.log('Form validation passed, submitting...');
+                }
+            });
+        }
+    });
+</script>
+
+<!-- Load Google Maps API -->
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap">
+</script>
 {% endblock %}
