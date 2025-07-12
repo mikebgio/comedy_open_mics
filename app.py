@@ -31,6 +31,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
@@ -42,7 +43,7 @@ db.init_app(app)
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "login"
+login_manager.login_view = "replit_auth.login"
 login_manager.login_message = "Please log in to access this page."
 
 
@@ -50,7 +51,7 @@ login_manager.login_message = "Please log in to access this page."
 def load_user(user_id):
     from models import User
 
-    return User.query.get(int(user_id))
+    return User.query.get(user_id)
 
 
 with app.app_context():

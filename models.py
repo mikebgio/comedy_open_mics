@@ -2,21 +2,29 @@ import secrets
 from datetime import date, datetime, time, timedelta
 
 from flask_login import UserMixin
+from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import UniqueConstraint
 
 from app import db
 
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    __tablename__ = 'users'
+    id = db.Column(db.String, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    first_name = db.Column(db.String(50), nullable=True)
+    last_name = db.Column(db.String(50), nullable=True)
+    profile_image_url = db.Column(db.String, nullable=True)
+    
+    # Keep legacy fields for backward compatibility
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    password_hash = db.Column(db.String(256), nullable=True)
+    email_verified = db.Column(db.Boolean, default=True, nullable=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     owned_shows = db.relationship(
@@ -52,7 +60,16 @@ class User(UserMixin, db.Model):
     @property
     def full_name(self):
         """Return full name"""
-        return f"{self.first_name} {self.last_name}"
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        elif self.username:
+            return self.username
+        else:
+            return self.email or f"User {self.id}"
 
     def get_show_role(self, show):
         """Get user's highest role for a specific show"""
@@ -76,6 +93,20 @@ class User(UserMixin, db.Model):
     def can_manage_lineup(self, show):
         """Check if user can manage show lineup"""
         return self.get_show_role(show) in ["owner", "runner", "host"]
+
+
+# OAuth table is mandatory for Replit Auth
+class OAuth(OAuthConsumerMixin, db.Model):
+    user_id = db.Column(db.String, db.ForeignKey(User.id))
+    browser_session_key = db.Column(db.String, nullable=False)
+    user = db.relationship(User)
+
+    __table_args__ = (UniqueConstraint(
+        'user_id',
+        'browser_session_key',
+        'provider',
+        name='uq_user_browser_session_key_provider',
+    ),)
 
 
 class Show(db.Model):
@@ -114,8 +145,8 @@ class Show(db.Model):
     )  # How late can comedians sign up (DEPRECATED - use signups_closed)
 
     # Ownership
-    owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    default_host_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    owner_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
+    default_host_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=True)
 
     # Display settings
     show_host_info = db.Column(db.Boolean, default=True)  # Show host info publicly
@@ -266,9 +297,9 @@ class ShowRunner(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey("show.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
-    added_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    added_by_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("show_id", "user_id", name="unique_show_runner"),
@@ -280,9 +311,9 @@ class ShowHost(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey("show.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
-    added_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    added_by_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("show_id", "user_id", name="unique_show_host"),
@@ -425,7 +456,7 @@ class ShowInstanceHost(db.Model):
     show_instance_id = db.Column(
         db.Integer, db.ForeignKey("show_instance.id"), nullable=False
     )
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -437,7 +468,7 @@ class Signup(db.Model):
     """Comedian signup for a specific show instance"""
 
     id = db.Column(db.Integer, primary_key=True)
-    comedian_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    comedian_id = db.Column(db.String, db.ForeignKey("users.id"), nullable=False)
     show_instance_id = db.Column(
         db.Integer, db.ForeignKey("show_instance.id"), nullable=False
     )

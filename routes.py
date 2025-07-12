@@ -2,16 +2,14 @@ import os
 from datetime import date, datetime, timedelta
 from urllib.parse import urljoin, urlparse
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import flash, jsonify, redirect, render_template, request, url_for, session
+from flask_login import current_user, login_required
 
 from app import app, db
 from forms import (
     CancellationForm,
     EventForm,
     InstanceHostForm,
-    LoginForm,
-    RegistrationForm,
     ShowSettingsForm,
     SignupForm,
 )
@@ -24,6 +22,15 @@ from models import (
     Signup,
     User,
 )
+from replit_auth import make_replit_blueprint, require_login
+
+# Register Replit Auth blueprint
+app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+
+# Make session permanent
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 
 def is_safe_url(target):
@@ -99,51 +106,9 @@ def index():
         return render_template("index.html", events_today=events_today)
 
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        user = User(
-            username=form.username.data,
-            email=form.email.data.lower(),
-            first_name=form.first_name.data,
-            last_name=form.last_name.data,
-        )
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash("Registration successful! You can now log in.")
-        return redirect(url_for("login"))
-
-    return render_template("auth/register.html", form=form)
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            next_page = request.args.get("next")
-            if not next_page or not is_safe_url(next_page):
-                next_page = url_for("dashboard")
-            return redirect(next_page)
-        flash("Invalid username or password")
-
-    return render_template("auth/login.html", form=form)
-
-
-@app.route("/logout")
-def logout():
-    logout_user()
-    return redirect(url_for("index"))
+# Authentication is now handled by Replit Auth
+# Login: redirect to url_for('replit_auth.login')
+# Logout: redirect to url_for('replit_auth.logout')
 
 
 @app.route("/dashboard")

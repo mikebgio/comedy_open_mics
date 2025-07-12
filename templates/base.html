@@ -57,7 +57,7 @@
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user me-1"></i>{{ current_user.username }}
+                                <i class="fas fa-user me-1"></i>{{ current_user.username or current_user.full_name or current_user.email }}
                             </a>
                             <ul class="dropdown-menu">
                                 <li><h6 class="dropdown-header">{{ current_user.full_name }}</h6></li>
@@ -68,17 +68,14 @@
                                 </span></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <li><a class="dropdown-item" href="{{ url_for('replit_auth.logout') }}">
                                     <i class="fas fa-sign-out-alt me-1"></i>Logout
                                 </a></li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                            <a class="nav-link" href="{{ url_for('replit_auth.login') }}">Login</a>
                         </li>
                     {% endif %}
                 </ul>
