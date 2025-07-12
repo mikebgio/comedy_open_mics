@@ -24,11 +24,29 @@ install-dev:
         pip install black isort flake8 pre-commit pytest
         @echo "Development dependencies installed!"
 
-# Run tests
+# Run all tests
 test:
-        @echo "Running tests..."
+        @echo "Running all tests..."
         python -m pytest tests/ -v
         @echo "Tests completed!"
+
+# Run unit tests only
+test-unit:
+        @echo "Running unit tests..."
+        python -m pytest tests/ -v -m "unit" --cov=. --cov-report=term-missing
+        @echo "Unit tests completed!"
+
+# Run integration tests only
+test-integration:
+        @echo "Running integration tests..."
+        python -m pytest tests/ -v -m "integration" --cov=. --cov-report=term-missing
+        @echo "Integration tests completed!"
+
+# Generate coverage report
+coverage:
+        @echo "Generating coverage report..."
+        python -m pytest tests/ -v --cov=. --cov-report=html --cov-report=term-missing
+        @echo "Coverage report generated!"
 
 # Clean up temporary files
 clean:
@@ -41,9 +59,12 @@ clean:
 # Show available commands
 help:
         @echo "Available commands:"
-        @echo "  format       - Format Python code with Black and isort"
-        @echo "  check-format - Check code formatting without changes"
-        @echo "  install-dev  - Install development dependencies"
-        @echo "  test         - Run test suite"
-        @echo "  clean        - Clean up temporary files"
-        @echo "  help         - Show this help message"
+        @echo "  format           - Format Python code with Black and isort"
+        @echo "  check-format     - Check code formatting without changes"
+        @echo "  install-dev      - Install development dependencies"
+        @echo "  test             - Run all tests"
+        @echo "  test-unit        - Run unit tests only"
+        @echo "  test-integration - Run integration tests only"
+        @echo "  coverage         - Generate coverage report"
+        @echo "  clean            - Clean up temporary files"
+        @echo "  help             - Show this help message"

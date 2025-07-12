@@ -3,6 +3,9 @@
 Integration tests for Comedy Open Mic Manager
 Fixed version for CI compatibility with Show/ShowInstance model
 """
+import pytest
+
+pytestmark = pytest.mark.integration
 import os
 import tempfile
 from datetime import date, datetime, time, timedelta
